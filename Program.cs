@@ -63,11 +63,10 @@ builder.Services
       });
 
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Debug()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
     .MinimumLevel.Override("Microsoft.AspNetCore.Hosting", LogEventLevel.Information)
     .MinimumLevel.Override("Microsoft.EntityFrameworkCor", LogEventLevel.Warning)
-    .WriteTo.File($"Logs/{Assembly.GetExecutingAssembly().GetName().Name}.log")
+    .WriteTo.File($"Logs/logs_.txt", rollingInterval: RollingInterval.Day)
     .WriteTo.Console()
     .CreateLogger();
 
@@ -89,11 +88,13 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseCors("default");
-// Configure the HTTP request pipeline.
-app.UseHangfireDashboard("", new DashboardOptions
+
+var options = new DashboardOptions()
 {
-    Authorization = new[] { new AllowAllAuthorizationFilter() }
-});
+    Authorization = new[] { new MyAuthorizationFilter() }
+};
+
+app.UseHangfireDashboard("/task", options);
 
 app.UseHttpsRedirection();
 
@@ -102,7 +103,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+app.UsePathBase("/task");
 app.MapControllers();
-
-
 app.Run();

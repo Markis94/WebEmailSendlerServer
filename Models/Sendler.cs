@@ -66,11 +66,13 @@ namespace WebEmailSendler.Models
         public string? Text { get; set; }
     }
 
-    public class AllowAllAuthorizationFilter : Hangfire.Dashboard.IDashboardAuthorizationFilter
+    public class MyAuthorizationFilter : IDashboardAuthorizationFilter
     {
         public bool Authorize(DashboardContext context)
         {
-            return true; // Разрешить всем
+            //var httpContext = context.GetHttpContext();
+            // Allow all authenticated users to see the Dashboard (potentially dangerous).
+            return true;
         }
     }
 
