@@ -42,6 +42,8 @@ namespace WebEmailSendler.Services
                 if (parameters == null)
                     return string.Empty;
                 htmlMesage = htmlMesage.Replace("{l}", parameters.Lschet).Replace("{s}", parameters.Sum).Replace("{t}", parameters.Text);
+                var endBody = "</body>";
+                htmlMesage = htmlMesage.Insert(htmlMesage.LastIndexOf(endBody), $"<div style=\"display: flex;\n\rjustify-content: center;\"><small style=\"font-size: 10px; visibility: hidden;\">Уведомление № {Guid.NewGuid()}</small></div>\n");
                 return htmlMesage;
             }
             catch(Exception ex)

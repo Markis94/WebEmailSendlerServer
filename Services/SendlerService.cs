@@ -49,7 +49,7 @@ namespace WebEmailSendler.Services
                 await Parallel.ForEachAsync(emailList, options, async (email, cancellationToken) =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    var sendResult = await SendEmailAsync(email.Email, (emailSendTask?.Subject ?? "Тема письма") + " " + Guid.NewGuid().ToString(),
+                    var sendResult = await SendEmailAsync(email.Email, (emailSendTask?.Subject ?? "Тема письма"),
                             _fileService.GenerateEmailBody(new SendParameters()
                             {
                                 Lschet = email.Lschet ?? "",
