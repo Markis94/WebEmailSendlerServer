@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Serilog;
 using Serilog.Events;
-using System.Reflection;
 using WebEmailSendler.Context;
 using WebEmailSendler.Dependencies;
 using WebEmailSendler.Models;
@@ -26,12 +25,27 @@ builder.Services.AddControllers().AddNewtonsoftJson(x =>
 //    options.FallbackPolicy = options.DefaultPolicy;
 //});
 
+#if !DEBUG
+    builder.Configuration
+        .SetBasePath($"{Directory.GetCurrentDirectory()}\\Config")
+        .AddJsonFile("configuration.json")
+        .Build();
+#endif
+
 string connection = builder.Configuration.GetConnectionString("Connection") ?? "";
 
 builder.Services.Configure<SmtpConfiguration>(builder.Configuration.GetSection("SmtpConfiguration"));
 builder.Services.AddDbContext<MyDbContext>(options => options.UseNpgsql(connection));
 
-builder.Services.AddHangfire(x => x.UsePostgreSqlStorage(c => c.UseNpgsqlConnection(connection)));
+builder.Services.AddHangfire(x => x.UsePostgreSqlStorage(c => c.UseNpgsqlConnection(connection), 
+    new PostgreSqlStorageOptions
+    {
+        InvisibilityTimeout = TimeSpan.FromHours(30), // Тайм-аут невидимости задач (увеличьте для длительных задач)
+        QueuePollInterval = TimeSpan.FromSeconds(15), // Интервал опроса очереди задач
+        DistributedLockTimeout = TimeSpan.FromMinutes(30), // Тайм-аут для распределённой блокировки
+    }
+    )
+);
 
 builder.Services.AddHangfireServer((options) =>
 {

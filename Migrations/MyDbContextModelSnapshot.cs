@@ -46,7 +46,7 @@ namespace WebEmailSendler.Migrations
                     b.Property<string>("Lschet")
                         .HasColumnType("text");
 
-                    b.Property<DateTimeOffset>("SentDate")
+                    b.Property<DateTimeOffset>("SendDate")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Sum")

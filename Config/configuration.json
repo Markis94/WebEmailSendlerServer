@@ -1,0 +1,26 @@
+{
+
+  "ConnectionStrings": {
+    "Connection": "Host=192.168.155.194;Port=5432;Database=Sendler;Username=postgres;Password=a896ox;"
+  },
+
+  "SmtpConfiguration": {
+    "Server": "mail.gas-nn.ru",
+    "Port": 25,
+    "Login": "no-reply@gas-nn.ru",
+    "Password": "153345e20",
+    "HostEmailAddress": "no-reply@gas-nn.ru",
+    "DisplayName": "АО «Газпром межрегионгаз Нижний Новгород»"
+  },
+
+  "TREAD_COUNT": 25,
+  "PACK_SIZE": 500, //промежуточное сохранение результата
+
+  "Cores": [
+    "http://localhost:80",
+    "http://localhost:4200",
+    "http://192.168.155.194",
+    "http://192.168.155.4200",
+    "http://192.168.155.136:4200"
+  ]
+}

@@ -53,6 +53,13 @@ namespace WebEmailSendler.Services
             await _dataManager.DeleteEmailSendTask(emailSendTaskId);
         }
 
+        public void ReCreateEmailJob(EmailSendTask emailSendTask)
+        {
+            emailSendTask.SendTaskStatus = SendTaskStatusEnum.created.ToString();
+            emailSendTask.JobId = "0";
+            _dataManager.UpdateEmailSendTask(emailSendTask);
+        }
+
         public async Task<int> CreateEmailDataSendTask(EmailSendTask emailSendTask)
         {
             emailSendTask.SendTaskStatus = SendTaskStatusEnum.created.ToString();
@@ -84,7 +91,7 @@ namespace WebEmailSendler.Services
                         Lschet = emailData.SendParameters.Lschet,
                         Sum = emailData.SendParameters.Sum,
                         Text = emailData.SendParameters.Text,
-                        SentDate = DateTime.UtcNow
+                        SendDate = DateTime.UtcNow
                     };
                     result.Add(emailResult);
                 }

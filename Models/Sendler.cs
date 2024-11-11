@@ -50,7 +50,7 @@ namespace WebEmailSendler.Models
         public required string Email { get; set; }
         public bool IsSuccess { get; set; }
         public string? ErrorMessage { get; set; }
-        public DateTimeOffset SentDate { get; set; }
+        public DateTimeOffset SendDate { get; set; }
     }
 
     public class EmailData
@@ -79,6 +79,7 @@ namespace WebEmailSendler.Models
     public enum SendTaskStatusEnum
     {
         created,
+        cancel,
         started,
         complete
     }
