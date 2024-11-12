@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Hangfire;
+using Newtonsoft.Json;
 using WebEmailSendler.Managers;
 using WebEmailSendler.Models;
 
@@ -6,12 +7,16 @@ namespace WebEmailSendler.Services
 {
     public class DataService
     {
+        public static Dictionary<int, CancellationTokenSource> CancelTokenTasks = new Dictionary<int, CancellationTokenSource>();
+
         private FileService _fileService;
         private DataManager _dataManager;
-        public DataService(FileService fileService, DataManager dataManager)
+        private SendlerService _sendlerService;
+        public DataService(FileService fileService, DataManager dataManager, SendlerService sendlerService)
         {
             _fileService = fileService;
             _dataManager = dataManager;
+            _sendlerService = sendlerService;
         }
 
         public async Task<EmailSendInfo> EmailSendTaskInfo(int emailSendTaskId)
@@ -38,26 +43,45 @@ namespace WebEmailSendler.Services
             return result;
         }
 
-        public async Task SetJobId(string jobId, int emailSendTaskId)
+        public string CreateEmailJob(EmailSendTask emailSendTask)
         {
-            await _dataManager.UpdateEmailSendTaskJobId(jobId, emailSendTaskId);
+            CancellationTokenSource cancelTokenSource = new CancellationTokenSource();
+            CancelTokenTasks.Add(emailSendTask.Id, cancelTokenSource);
+            var jobId = BackgroundJob.Enqueue(() => _sendlerService.SendEmailByTask(emailSendTask.Id, cancelTokenSource.Token));
+            emailSendTask.JobId = jobId;
+            _dataManager.UpdateEmailSendTask(emailSendTask);
+            return jobId;
         }
 
-        public async Task CancelEmailSendTask(string jobId)
+        public async Task CancelEmailSendTask(int emailSendTaskId)
         {
-            await _dataManager.CancelEmailSendTask(jobId);
+            var token = CancelTokenTasks.GetValueOrDefault(emailSendTaskId);
+            if(token !=null)
+            {
+                await token.CancelAsync();
+            }
+            var task = await _dataManager.GetEmailSendTask(emailSendTaskId) ?? throw new Exception("Не удалось найти задание");
+            BackgroundJob.Delete(task.JobId);
+            task.SendTaskStatus = SendTaskStatusEnum.cancel.ToString();
+            _dataManager.UpdateEmailSendTask(task);
+            CancelTokenTasks.Remove(emailSendTaskId);
         }
 
         public async Task DeleteTaskAndData(int emailSendTaskId)
         {
             await _dataManager.DeleteEmailSendTask(emailSendTaskId);
+            CancelTokenTasks.Remove(emailSendTaskId);
         }
 
-        public void ReCreateEmailJob(EmailSendTask emailSendTask)
+        public string ReCreateEmailJob(EmailSendTask emailSendTask)
         {
             emailSendTask.SendTaskStatus = SendTaskStatusEnum.created.ToString();
-            emailSendTask.JobId = "0";
+            CancellationTokenSource cancelTokenSource = new CancellationTokenSource();
+            CancelTokenTasks.Add(emailSendTask.Id, cancelTokenSource);
+            var jobId = BackgroundJob.Enqueue(() => _sendlerService.SendEmailByTask(emailSendTask.Id, cancelTokenSource.Token));
+            emailSendTask.JobId = jobId;
             _dataManager.UpdateEmailSendTask(emailSendTask);
+            return jobId;
         }
 
         public async Task<int> CreateEmailDataSendTask(EmailSendTask emailSendTask)
@@ -72,8 +96,7 @@ namespace WebEmailSendler.Services
             }
             return resultId;
         }
-
-        public async Task CreateEmailSendResult(List<EmailData> emailSendResultList, EmailSendTask emailSendTask)
+        private async Task CreateEmailSendResult(List<EmailData> emailSendResultList, EmailSendTask emailSendTask)
         {
             var result = new List<EmailSendResult>();
             foreach (var emailData in emailSendResultList)

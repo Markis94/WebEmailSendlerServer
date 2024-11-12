@@ -61,29 +61,24 @@ namespace WebEmailSendler.Controllers
             return id;
         }
 
-        [HttpPost("reCreateEmailJob")]
-        public async Task<string> ReCreateEmailJob([FromBody] EmailSendTask emailSendTask)
+        [HttpPost("createEmailJob")]
+        public string CreateEmailJob([FromBody] EmailSendTask emailSendTask)
         {
-            _dataService.ReCreateEmailJob(emailSendTask);
-            var jobId = BackgroundJob.Enqueue(() => sendlerService.SendEmailByTask(emailSendTask.Id));
-            await _dataService.SetJobId(jobId, emailSendTask.Id);
+            var jobId = _dataService.CreateEmailJob(emailSendTask);
             return jobId;
         }
 
-        [HttpPost("createEmailJob")]
-        public async Task<string> CreateEmailJob([FromQuery] int emailSendTaskId)
+        [HttpPost("reCreateEmailJob")]
+        public string ReCreateEmailJob([FromBody] EmailSendTask emailSendTask)
         {
-            var jobId = BackgroundJob.Enqueue(() => sendlerService.SendEmailByTask(emailSendTaskId));
-            await _dataService.SetJobId(jobId, emailSendTaskId);
+            var jobId = _dataService.ReCreateEmailJob(emailSendTask);
             return jobId;
         }
 
         [HttpPost("cancelEmailJob")]
-        public async Task<IActionResult> CancelEmailJobAsync([FromQuery] string jobId)
+        public async Task<IActionResult> CancelEmailJobAsync([FromQuery] int emailSendTaskId)
         {
-            sendlerService.CancelSending();
-            await _dataService.CancelEmailSendTask(jobId);
-            BackgroundJob.Delete(jobId);
+            await _dataService.CancelEmailSendTask(emailSendTaskId);
             return Ok();
         }
 

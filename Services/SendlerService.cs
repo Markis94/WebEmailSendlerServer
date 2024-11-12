@@ -1,22 +1,20 @@
-﻿using System.Net.Mail;
-using System.Net;
-using WebEmailSendler.Models;
-using WebEmailSendler.Managers;
+﻿
 using Microsoft.Extensions.Options;
 using Serilog;
-using System.Collections.Concurrent;
-using System;
+using System.Net;
+using System.Net.Mail;
+using WebEmailSendler.Managers;
+using WebEmailSendler.Models;
 
 namespace WebEmailSendler.Services
 {
     public class SendlerService
     {
-        private readonly int TREAD_COUNT = 30;
-        private readonly int PACK_SIZE = 500;
+        private readonly int TREAD_COUNT;
+        private readonly int PACK_SIZE;
         private readonly FileService _fileService;
         private readonly DataManager _dataManager;
         private readonly SmtpConfiguration _smtpConfiguration;
-        private readonly CancellationTokenSource cancelTokenSource;
 
         public SendlerService(FileService fileService, DataManager dataManager, IConfiguration configuration, IOptions<SmtpConfiguration> smtpConfiguration)
         {
@@ -25,134 +23,112 @@ namespace WebEmailSendler.Services
             _smtpConfiguration = smtpConfiguration.Value;
             TREAD_COUNT = Convert.ToInt32(configuration.GetSection("TREAD_COUNT").Value);
             PACK_SIZE = Convert.ToInt32(configuration.GetSection("PACK_SIZE").Value);
-            cancelTokenSource = new CancellationTokenSource();
         }
 
-        public void CancelSending()
+        public async Task SendEmailByTask(int emailTaskId, CancellationToken token)
         {
-            cancelTokenSource.Cancel();
-        }
-
-        public async Task SendEmailByTask(int emailTaskId)
-        {
-            CancellationToken token = cancelTokenSource.Token;
             var emailList = await _dataManager.GetEmailSendResult(emailTaskId);
             var emailSendTask = await _dataManager.GetEmailSendTask(emailTaskId);
             emailSendTask!.SendTaskStatus = SendTaskStatusEnum.started.ToString();
             _dataManager.UpdateEmailSendTask(emailSendTask);
 
-            int iterations = emailList.Count;
-            ConcurrentBag<EmailSendResult> tempSendModified = new ConcurrentBag<EmailSendResult>();
-            // Счетчик для отслеживания изменений
-            int changeCounter = 0;
-            int saveThreshold = PACK_SIZE;
+            var emailPacks = emailList.Chunk(PACK_SIZE);
             var options = new ParallelOptions()
             {
                 MaxDegreeOfParallelism = TREAD_COUNT,
                 CancellationToken = token
             };
 
-            try
+            foreach (var emailPack in emailPacks)
             {
-                await Parallel.ForEachAsync(emailList, options, async (email, cancellationToken) =>
+                try
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var emailBody = _fileService.GenerateEmailBody(
-                        new SendParameters()
+                    token.ThrowIfCancellationRequested();
+                    await Parallel.ForEachAsync(emailPack, options, async (email, token) =>
+                    {
+                        var emailBody = _fileService.GenerateEmailBody(
+                            new SendParameters()
+                            {
+                                Lschet = email.Lschet ?? "",
+                                Sum = email.Sum ?? "",
+                                Text = email.Text ?? "",
+                            },
+                            emailSendTask?.HtmlMessage ?? "");
+
+                        var sendResult = await SendEmailAsync(email.Email, emailSendTask?.Subject ?? "Тема письма", emailBody);
+
+                        if (sendResult.Item1 == true)
                         {
-                            Lschet = email.Lschet ?? "",
-                            Sum = email.Sum ?? "",
-                            Text = email.Text ?? "",
-                        }, 
-                        emailSendTask?.HtmlMessage ?? "");
+                            email.IsSuccess = true;
+                            email.SendDate = DateTime.UtcNow;
+                        }
+                        else
+                        {
+                            email.IsSuccess = false;
+                            email.SendDate = DateTime.UtcNow;
+                            email.ErrorMessage = sendResult.Item2;
+                        }
+                    });
 
-                    var sendResult = await SendEmailAsync(email.Email, (emailSendTask?.Subject ?? "Тема письма"),emailBody);
-
-                    if (sendResult.Item1 == true)
-                    {
-                        email.IsSuccess = true;
-                        email.SendDate = DateTime.UtcNow;
-                    }
-                    else
-                    {
-                        email.IsSuccess = false;
-                        email.SendDate = DateTime.UtcNow;
-                        email.ErrorMessage = sendResult.Item2;
-                    }
-                    tempSendModified.Add(email);
-                    int currentCount = Interlocked.Increment(ref changeCounter);
-                    // Если достигнут порог изменений, сохраняем результаты
-                    if (currentCount % saveThreshold == 0)
-                    {
-                        var saveList = tempSendModified;
-                        tempSendModified = new ConcurrentBag<EmailSendResult>();
-                        Log.Information("Save Changes");
-                        await _dataManager.UpdateEmailSendResult([.. saveList]);
+                    Log.Information("Save Changes");
+                    await _dataManager.UpdateEmailSendResult([.. emailPack]);
 #if DEBUG
-                        File.AppendAllLinesAsync($"Files\\send_{emailSendTask.Name}", saveList.Select(x => x.Email));
+                    File.AppendAllLinesAsync($"Files\\send_{emailSendTask.Name}", emailPack.Select(x => x.Email));
 #endif
-                    }
-                    cancellationToken.ThrowIfCancellationRequested();
-                });
-            }
-            catch (OperationCanceledException e)
-            {
-                if (cancelTokenSource.IsCancellationRequested) {
-                    Log.Information($"Token IsCancellationRequested");
                 }
-                Log.Information($"Cancel: {e.Message}");
-                await CancelSend(emailSendTask, [.. tempSendModified]);
-                return;
-            }
-            catch (Exception e)
-            {
-                Log.Information($"Exception: {e.Message}");
-            }
-            if (changeCounter % saveThreshold == 0)
-            {
-                Log.Information("Save Changes");
-                await _dataManager.UpdateEmailSendResult([.. tempSendModified]);
+                catch (OperationCanceledException e)
+                {
 #if DEBUG
-                File.AppendAllLinesAsync($"Files\\send_{emailSendTask.Name}", tempSendModified.Select(x => x.Email));
+                    File.AppendAllLinesAsync($"Files\\send_{emailSendTask.Name}", emailPack.Select(x => x.Email));
 #endif
+                    Log.Information($"Cancel Information: {e.Message}");
+                    await SendFinished(emailSendTask, emailList, SendTaskStatusEnum.cancel);
+                    return;
+                }
+                catch (Exception e)
+                {
+                    Log.Information($"Exception: {e.Message}");
+                }
             }
-            emailSendTask!.SendTaskStatus = SendTaskStatusEnum.complete.ToString();
-            emailSendTask.EndDate = DateTime.UtcNow;
-            await _dataManager.UpdateEmailSendResult([.. tempSendModified]);
-            _dataManager.UpdateEmailSendTask(emailSendTask);
+
+            await SendFinished(emailSendTask, emailList, SendTaskStatusEnum.complete);
+            DataService.CancelTokenTasks.Remove(emailTaskId);
         }
 
-        public async Task CancelSend(EmailSendTask sendTask, List<EmailSendResult> sendResults)
+        private async Task SendFinished(EmailSendTask sendTask, List<EmailSendResult> sendResults, SendTaskStatusEnum status)
         {
-            Log.Error("<--------Cancel--------->");
-            sendTask!.SendTaskStatus = SendTaskStatusEnum.cancel.ToString();
+            sendTask.SendTaskStatus = SendTaskStatusEnum.complete.ToString();
+            if (status == SendTaskStatusEnum.cancel)
+            {
+                Log.Error("<--------Cancel--------->");
+                sendTask.SendTaskStatus = SendTaskStatusEnum.cancel.ToString();
+            }
             sendTask.EndDate = DateTime.UtcNow;
             _dataManager.UpdateEmailSendTask(sendTask);
             await _dataManager.UpdateEmailSendResult(sendResults);
         }
 
-        public async Task<Tuple<bool, string>> SendEmailAsync(string email, string subject, string? body)
+        private async Task<Tuple<bool, string>> SendEmailAsync(string email, string subject, string? body)
         {
             try
             {
-                //var smtpClient = new SmtpClient(_smtpConfiguration.Server)
-                //{
-                //    Port = _smtpConfiguration.Port,
-                //    Credentials = new NetworkCredential(_smtpConfiguration.Login, _smtpConfiguration.Password),
-                //    EnableSsl = false,
-                //};
+                var smtpClient = new SmtpClient(_smtpConfiguration.Server)
+                {
+                    Port = _smtpConfiguration.Port,
+                    Credentials = new NetworkCredential(_smtpConfiguration.Login, _smtpConfiguration.Password),
+                    EnableSsl = false,
+                };
 
-                //var mailMessage = new MailMessage
-                //{
-                //    From = new MailAddress(_smtpConfiguration.HostEmailAddress, _smtpConfiguration.DisplayName),
-                //    Subject = subject,
-                //    Body = body ?? "",
-                //    IsBodyHtml = true,
-                //};
-                //mailMessage.To.Add(email);
+                var mailMessage = new MailMessage
+                {
+                    From = new MailAddress(_smtpConfiguration.HostEmailAddress, _smtpConfiguration.DisplayName),
+                    Subject = subject,
+                    Body = body ?? "",
+                    IsBodyHtml = true,
+                };
+                mailMessage.To.Add(email);
 
-                //await smtpClient.SendMailAsync(mailMessage);
-                await Task.Delay(1000);
+                await smtpClient.SendMailAsync(mailMessage);
                 Log.Information($"Send Complite {email}");
                 return Tuple.Create(true, string.Empty);
             }

@@ -106,16 +106,6 @@ namespace WebEmailSendler.Managers
             }
         }
 
-        public async Task CancelEmailSendTask(string jobId)
-        {
-            var upd = await _context.EmailSendTask.FirstOrDefaultAsync(x => x.JobId == jobId);
-            if (upd != null)
-            {
-                upd.SendTaskStatus = SendTaskStatusEnum.complete.ToString();
-                UpdateEmailSendTask(upd);
-            }
-        }
-
         public Part<EmailSendResult> EmailResultPath(string? inputValue, int sendTaskId, int pageNumber, int pageSize, string? sortField, string? orderBy)
         {
             IQueryable<EmailSendResult> data;
