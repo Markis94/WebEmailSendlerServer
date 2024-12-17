@@ -26,9 +26,13 @@ namespace WebEmailSendler.Models
         public required string Subject { get; set; }
         public required string HtmlMessage { get; set; }
         public DateTimeOffset CreateDate { get; set; }
+        public DateTimeOffset? StartDate { get; set; } = null;
         public DateTimeOffset EndDate { get; set; }
         public string SendTaskStatus { get; set; } = SendTaskStatusEnum.created.ToString();
         public string JobId { get; set; } = string.Empty;
+
+        //[NotMapped]
+        //public EmailSendInfo? EmailSendInfo { get; set; } = null;
 
         [NotMapped]
         public string? CsvData { get; set; }

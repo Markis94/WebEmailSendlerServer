@@ -28,6 +28,9 @@ namespace WebEmailSendler.Services
         public async Task<List<EmailSendTask>> EmailSendTasks(SendTaskStatusEnum status)
         {
             var result = await _dataManager.EmailSendTaskList(status);
+            //foreach (var task in result) { 
+            //    task.EmailSendInfo = await _dataManager.EmailSendTaskInfo(task.Id);
+            //}
             return result;
         }
 

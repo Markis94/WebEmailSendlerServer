@@ -27,7 +27,7 @@ builder.Services.AddControllers().AddNewtonsoftJson(x =>
 
 #if !DEBUG
     builder.Configuration
-        .SetBasePath($"{Directory.GetCurrentDirectory()}\\Config")
+        .SetBasePath($"{Directory.GetCurrentDirectory()}/Config")
         .AddJsonFile("configuration.json")
         .Build();
 #endif
@@ -77,9 +77,11 @@ builder.Services
       });
 
 Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
-    .MinimumLevel.Override("Microsoft.AspNetCore.Hosting", LogEventLevel.Information)
-    .MinimumLevel.Override("Microsoft.EntityFrameworkCor", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.AspNetCore.Mvc", LogEventLevel.Error)
+    .MinimumLevel.Override("Microsoft.AspNetCore.Hosting", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Error)
+    .MinimumLevel.Override("Hangfire", LogEventLevel.Error)
     .WriteTo.File($"Logs/logs_.txt", rollingInterval: RollingInterval.Day)
     .WriteTo.Console()
     .CreateLogger();
@@ -87,6 +89,7 @@ Log.Logger = new LoggerConfiguration()
 builder.Logging.ClearProviders();
 builder.Logging.AddSerilog();
 
+Log.Information("Start App");
 var app = builder.Build();
 
 if (!app.Environment.IsDevelopment())
@@ -101,15 +104,16 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
 }
 
-app.UseCors("default");
 
 var options = new DashboardOptions()
 {
+    DisplayStorageConnectionString = false,
     Authorization = new[] { new MyAuthorizationFilter() }
 };
 
 app.UseHangfireDashboard("/task", options);
 
+app.UseCors("default");
 app.UseHttpsRedirection();
 
 if (app.Environment.IsDevelopment())

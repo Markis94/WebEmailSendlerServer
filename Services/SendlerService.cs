@@ -29,6 +29,7 @@ namespace WebEmailSendler.Services
         {
             var emailList = await _dataManager.GetEmailSendResult(emailTaskId);
             var emailSendTask = await _dataManager.GetEmailSendTask(emailTaskId);
+            emailSendTask!.StartDate = DateTime.UtcNow;
             emailSendTask!.SendTaskStatus = SendTaskStatusEnum.started.ToString();
             _dataManager.UpdateEmailSendTask(emailSendTask);
 
@@ -38,7 +39,7 @@ namespace WebEmailSendler.Services
                 MaxDegreeOfParallelism = TREAD_COUNT,
                 CancellationToken = token
             };
-
+            Log.Information($"Start Send - {DateTime.UtcNow} - {emailSendTask.Name}");
             foreach (var emailPack in emailPacks)
             {
                 try
@@ -60,6 +61,7 @@ namespace WebEmailSendler.Services
                         if (sendResult.Item1 == true)
                         {
                             email.IsSuccess = true;
+                            email.ErrorMessage = null;
                             email.SendDate = DateTime.UtcNow;
                         }
                         else
@@ -70,7 +72,7 @@ namespace WebEmailSendler.Services
                         }
                     });
 
-                    Log.Information("Save Changes");
+                    Log.Information($"Save Changes - {DateTime.UtcNow}");
                     await _dataManager.UpdateEmailSendResult([.. emailPack]);
 #if DEBUG
                     File.AppendAllLinesAsync($"Files\\send_{emailSendTask.Name}", emailPack.Select(x => x.Email));
@@ -93,17 +95,18 @@ namespace WebEmailSendler.Services
 
             await SendFinished(emailSendTask, emailList, SendTaskStatusEnum.complete);
             DataService.CancelTokenTasks.Remove(emailTaskId);
+            Log.Information($"End Send - {DateTime.UtcNow} - {emailSendTask.Name}");
         }
 
         private async Task SendFinished(EmailSendTask sendTask, List<EmailSendResult> sendResults, SendTaskStatusEnum status)
         {
             sendTask.SendTaskStatus = SendTaskStatusEnum.complete.ToString();
+            sendTask.EndDate = DateTime.UtcNow;
             if (status == SendTaskStatusEnum.cancel)
             {
-                Log.Error("<--------Cancel--------->");
+                Log.Error($"<--------Cancel - {DateTime.UtcNow} - {sendTask.Name}\"--------->");
                 sendTask.SendTaskStatus = SendTaskStatusEnum.cancel.ToString();
             }
-            sendTask.EndDate = DateTime.UtcNow;
             _dataManager.UpdateEmailSendTask(sendTask);
             await _dataManager.UpdateEmailSendResult(sendResults);
         }
@@ -117,6 +120,7 @@ namespace WebEmailSendler.Services
                     Port = _smtpConfiguration.Port,
                     Credentials = new NetworkCredential(_smtpConfiguration.Login, _smtpConfiguration.Password),
                     EnableSsl = false,
+                    Timeout = 120000 // Устанавливаем тайм-аут в 120 секунд (120000 миллисекунд)
                 };
 
                 var mailMessage = new MailMessage
@@ -126,6 +130,7 @@ namespace WebEmailSendler.Services
                     Body = body ?? "",
                     IsBodyHtml = true,
                 };
+
                 mailMessage.To.Add(email);
 
                 await smtpClient.SendMailAsync(mailMessage);
