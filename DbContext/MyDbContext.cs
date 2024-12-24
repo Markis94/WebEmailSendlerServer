@@ -8,6 +8,7 @@ namespace WebEmailSendler.Context
         public MyDbContext(DbContextOptions<MyDbContext> options) : base(options) { }
         public DbSet<EmailSendTask> EmailSendTask { get; set; }
         public DbSet<EmailSendResult> EmailSendResults { get; set; }
+        public DbSet<Sample> Samles {  get; set; }
 
     }
 }

@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using Serilog;
 using System.Net;
 using System.Net.Mail;
+using WebEmailSendler.Enums;
 using WebEmailSendler.Managers;
 using WebEmailSendler.Models;
 
@@ -47,33 +48,58 @@ namespace WebEmailSendler.Services
                     token.ThrowIfCancellationRequested();
                     await Parallel.ForEachAsync(emailPack, options, async (email, token) =>
                     {
-                        var emailBody = _fileService.GenerateEmailBody(
-                            new SendParameters()
+                        try
+                        {
+                            var emailBody = _fileService.GenerateEmailBody(
+                                new SendParameters()
+                                {
+                                    Lschet = email.Lschet ?? "",
+                                    Sum = email.Sum ?? "",
+                                    Text = email.Text ?? "",
+                                },
+                                emailSendTask?.HtmlMessage ?? "");
+
+                            try
                             {
-                                Lschet = email.Lschet ?? "",
-                                Sum = email.Sum ?? "",
-                                Text = email.Text ?? "",
-                            },
-                            emailSendTask?.HtmlMessage ?? "");
-
-                        var sendResult = await SendEmailAsync(email.Email, emailSendTask?.Subject ?? "Тема письма", emailBody);
-
-                        if (sendResult.Item1 == true)
-                        {
-                            email.IsSuccess = true;
-                            email.ErrorMessage = null;
-                            email.SendDate = DateTime.UtcNow;
+                                var sendResult = await SendEmailAsync(email.Email, emailSendTask?.Subject ?? "Тема письма", emailBody)
+                                    .WaitAsync(TimeSpan.FromMinutes(2));
+                                if (sendResult.Item1 == true)
+                                {
+                                    email.IsSuccess = true;
+                                    email.ErrorMessage = null;
+                                    email.SendDate = DateTime.UtcNow;
+                                }
+                                else
+                                {
+                                    email.IsSuccess = false;
+                                    email.SendDate = DateTime.UtcNow;
+                                    email.ErrorMessage = sendResult.Item2;
+                                }
+                            }
+                            catch (TimeoutException ex)
+                            {
+                                email.IsSuccess = false;
+                                email.SendDate = DateTime.UtcNow;
+                                email.ErrorMessage = ex.Message;
+                                Log.Error($"Error timeout exception send email {email.Email}: {ex.Message}");
+                            }
                         }
-                        else
+                        catch (Exception ex)
                         {
-                            email.IsSuccess = false;
-                            email.SendDate = DateTime.UtcNow;
-                            email.ErrorMessage = sendResult.Item2;
+                            Log.Error($"Error processing parallel send email: {ex.Message}");
                         }
                     });
 
                     Log.Information($"Save Changes - {DateTime.UtcNow}");
-                    await _dataManager.UpdateEmailSendResult([.. emailPack]);
+
+                    if (emailPack.Length > 2000)
+                    {
+                        await _dataManager.BulkUpdateEmailSendResult(emailPack.ToList());
+                    }
+                    else
+                    {
+                        _dataManager.UpdateEmailSendResult(emailPack.ToList());
+                    }
 #if DEBUG
                     File.AppendAllLinesAsync($"Files\\send_{emailSendTask.Name}", emailPack.Select(x => x.Email));
 #endif
@@ -107,8 +133,11 @@ namespace WebEmailSendler.Services
                 Log.Error($"<--------Cancel - {DateTime.UtcNow} - {sendTask.Name}\"--------->");
                 sendTask.SendTaskStatus = SendTaskStatusEnum.cancel.ToString();
             }
+            await _dataManager.BulkUpdateEmailSendResult(sendResults);
+            var sendCount = await _dataManager.EmailSendTaskInfo(sendTask.Id);
+            sendTask.BadSendCount = sendCount.BadSendCount;
+            sendTask.SendCount = sendCount.SendCount;
             _dataManager.UpdateEmailSendTask(sendTask);
-            await _dataManager.UpdateEmailSendResult(sendResults);
         }
 
         private async Task<Tuple<bool, string>> SendEmailAsync(string email, string subject, string? body)

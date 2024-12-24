@@ -1,5 +1,7 @@
 ﻿using Hangfire;
 using Microsoft.AspNetCore.Mvc;
+using WebEmailSendler.Enums;
+using WebEmailSendler.Migrations;
 using WebEmailSendler.Models;
 using WebEmailSendler.Services;
 
@@ -26,10 +28,12 @@ namespace WebEmailSendler.Controllers
             return result;
         }
 
-        [HttpGet("getEmailSendTaskByStatus")]
-        public async Task<List<EmailSendTask>> GetEmailDataSendTask([FromQuery(Name = "taskStatus")] SendTaskStatusEnum status)
+        [HttpGet("emailSendTaskByStatus")]
+        public async Task<List<EmailSendTask>> GetEmailDataSendTask([FromQuery(Name = "taskStatus")] SendTaskStatusEnum status,
+            DateTime leftDate, 
+            DateTime rightDate)
         {
-            var result = await _dataService.EmailSendTasks(status);
+            var result = await _dataService.EmailSendTasks(status, leftDate, rightDate);
             return result;
         }
 
@@ -82,25 +86,43 @@ namespace WebEmailSendler.Controllers
             return Ok();
         }
 
-        [HttpPost("deleteTaskAndData")]
+        [HttpDelete("deleteTaskAndData")]
         public IActionResult DeleteTaskAndData([FromQuery] int emailSendTaskId)
         {
             var jobId = BackgroundJob.Enqueue(() => _dataService.DeleteTaskAndData(emailSendTaskId));
             return Ok();
         }
 
-        [HttpPost("saveSample")]
-        public async Task<IActionResult> SaveSampleAsync(object sample)
+        [HttpPost("createSample")]
+        public async Task<Sample> CreateSample(Sample sample)
         {
-            await _dataService.SaveSample(sample);
+            return await _dataService.CreateSample(sample);
+        }
+
+        [HttpGet("getSamples")]
+        public async Task<IList<Sample>> GetSamples()
+        {
+            return await _dataService.SampleList();
+        }
+
+        [HttpGet("getSampleById")]
+        public async Task<Sample> GetSampleById(int sampleId)
+        {
+            return await _dataService.SampleById(sampleId);
+        }
+
+        [HttpPut("updateSample")]
+        public async Task<IActionResult> UpdateSample(Sample sample)
+        {
+            await _dataService.UpdateSample(sample);
             return Ok();
         }
 
-        [HttpGet("getSample")]
-        public Task<object> GetSample()
+        [HttpDelete("deleteSample")]
+        public async Task<IActionResult> DeleteSample(int sampleId)
         {
-            var sample = _dataService.SampleContext();
-            return sample;
+            await _dataService.DeleteSample(sampleId);
+            return Ok();
         }
     }
 }

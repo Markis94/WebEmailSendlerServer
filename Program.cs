@@ -121,6 +121,5 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-app.UsePathBase("/task");
 app.MapControllers();
 app.Run();

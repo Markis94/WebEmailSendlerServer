@@ -1,5 +1,6 @@
 ﻿using Hangfire;
 using Newtonsoft.Json;
+using WebEmailSendler.Enums;
 using WebEmailSendler.Managers;
 using WebEmailSendler.Models;
 
@@ -25,12 +26,25 @@ namespace WebEmailSendler.Services
             return result;
         }
 
-        public async Task<List<EmailSendTask>> EmailSendTasks(SendTaskStatusEnum status)
+        public async Task<List<EmailSendTask>> EmailSendTasks(SendTaskStatusEnum status, DateTime leftDate, DateTime rightDate)
         {
-            var result = await _dataManager.EmailSendTaskList(status);
-            //foreach (var task in result) { 
-            //    task.EmailSendInfo = await _dataManager.EmailSendTaskInfo(task.Id);
-            //}
+            var result = await _dataManager.EmailSendTaskList(status, leftDate, rightDate);
+            foreach (var task in result)
+            {
+                if(task.SendTaskStatus == SendTaskStatusEnum.started.ToString())
+                {
+                    task.EmailSendInfo = await _dataManager.EmailSendTaskInfo(task.Id);
+                }
+                else
+                {
+                    task.EmailSendInfo = new EmailSendInfo()
+                    {
+                        BadSendCount = task.BadSendCount,
+                        MaxCount = task.MaxCount,
+                        SendCount = task.SendCount
+                    };
+                }
+            }
             return result;
         }
 
@@ -90,11 +104,13 @@ namespace WebEmailSendler.Services
         public async Task<int> CreateEmailDataSendTask(EmailSendTask emailSendTask)
         {
             emailSendTask.SendTaskStatus = SendTaskStatusEnum.created.ToString();
-            var resultId = await _dataManager.CreateEmailSendTask(emailSendTask);
+            var resultId = 0;
             if (emailSendTask.CsvData != null && emailSendTask.HtmlMessage != null)
             {
-                emailSendTask.Id = resultId;
                 var resultData = _fileService.ReadEmailDataFromCsv(emailSendTask.CsvData);
+                emailSendTask.MaxCount = resultData.Count;
+                resultId = await _dataManager.CreateEmailSendTask(emailSendTask);
+                emailSendTask.Id = resultId;
                 await CreateEmailSendResult(resultData, emailSendTask);
             }
             return resultId;
@@ -114,9 +130,9 @@ namespace WebEmailSendler.Services
                         Email = emailData.Email,
                         IsSuccess = false,
                         ErrorMessage = null,
-                        Lschet = emailData.SendParameters.Lschet,
-                        Sum = emailData.SendParameters.Sum,
-                        Text = emailData.SendParameters.Text,
+                        Lschet = emailData.SendParameters?.Lschet,
+                        Sum = emailData.SendParameters?.Sum,
+                        Text = emailData.SendParameters?.Text,
                         SendDate = DateTime.UtcNow
                     };
                     result.Add(emailResult);
@@ -151,12 +167,27 @@ namespace WebEmailSendler.Services
             }
         }
 
-        public async Task SaveSample(object sample)
+        public async Task<Sample> CreateSample(Sample sample)
         {
-            var filePath = "Sample/sample.json";
-            var jsonDocument = JsonConvert.SerializeObject(sample);
-            File.Delete(filePath);
-            await File.WriteAllTextAsync(filePath, jsonDocument);
+            return await _dataManager.CreateSample(sample);
+        }
+
+        public async Task<IList<Sample>> SampleList()
+        {
+            return await _dataManager.SampleList();
+        }
+
+        public async Task<Sample> SampleById(int sampleId)
+        {
+            return await _dataManager.SampleById(sampleId);
+        }
+        public async Task DeleteSample(int sampleId)
+        {
+            await _dataManager.DeleteSample(sampleId);
+        }
+        public async Task UpdateSample(Sample sample)
+        {
+            await _dataManager.UpdateSample(sample);
         }
     }
 }

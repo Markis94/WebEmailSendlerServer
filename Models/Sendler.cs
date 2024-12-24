@@ -2,14 +2,23 @@
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using WebEmailSendler.Enums;
 
 namespace WebEmailSendler.Models
 {
+    public class Sample
+    {
+        [Key]
+        public int Id { get; set; }
+        public required string Name { get; set; }
+        public DateTimeOffset CreateDate { get; set; } = DateTimeOffset.Now;
+        public required string SampleJson { get; set; } 
+    }
     public class EmailSendInfo
     {
-        public int MaxCount { get; set; }
-        public int SendCount { get; set; }
-        public int BadSendCount { get; set; }
+        public int MaxCount { get; set; } = 0;
+        public int SendCount { get; set; } = 0;
+        public int BadSendCount { get; set; } = 0;
     }
 
     public class Part<EmailSendTask>
@@ -18,7 +27,7 @@ namespace WebEmailSendler.Models
         public int TotalCount { get; set; }
     }
 
-    public class EmailSendTask
+    public class EmailSendTask: EmailSendInfo
     {
         [Key]
         public int Id { get; set; }
@@ -31,8 +40,8 @@ namespace WebEmailSendler.Models
         public string SendTaskStatus { get; set; } = SendTaskStatusEnum.created.ToString();
         public string JobId { get; set; } = string.Empty;
 
-        //[NotMapped]
-        //public EmailSendInfo? EmailSendInfo { get; set; } = null;
+        [NotMapped]
+        public EmailSendInfo? EmailSendInfo { get; set; } = null;
 
         [NotMapped]
         public string? CsvData { get; set; }
@@ -78,13 +87,5 @@ namespace WebEmailSendler.Models
             // Allow all authenticated users to see the Dashboard (potentially dangerous).
             return true;
         }
-    }
-
-    public enum SendTaskStatusEnum
-    {
-        created,
-        cancel,
-        started,
-        complete
     }
 }

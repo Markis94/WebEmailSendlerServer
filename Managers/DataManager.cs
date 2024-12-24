@@ -1,6 +1,7 @@
 ﻿using EFCore.BulkExtensions;
 using Microsoft.EntityFrameworkCore;
 using WebEmailSendler.Context;
+using WebEmailSendler.Enums;
 using WebEmailSendler.Models;
 
 namespace WebEmailSendler.Managers
@@ -13,20 +14,61 @@ namespace WebEmailSendler.Managers
             _context = context;
         }
 
+        public async Task<Sample> CreateSample(Sample samle)
+        {
+            await _context.Samles.AddAsync(samle);
+            await _context.SaveChangesAsync();
+            return samle;
+        }
+
+        public async Task<IList<Sample>> SampleList()
+        {
+            var result = await _context.Samles.AsNoTracking().OrderByDescending(x => x.CreateDate).ToListAsync();
+            return result;
+        }
+
+        public async Task UpdateSample(Sample sample)
+        {
+            var upd = await _context.Samles.AsNoTracking().FirstOrDefaultAsync(x => x.Id == sample.Id);
+            if (sample != null)
+            {
+                _context.Samles.Update(sample);
+                _context.SaveChanges();
+            }
+        }
+
+        public async Task DeleteSample(int sampleId)
+        {
+            var sample = await _context.Samles.FirstOrDefaultAsync(x => x.Id == sampleId);
+            if (sample != null)
+            {
+                _context.Samles.Remove(sample);
+                _context.SaveChanges();
+            }
+        }
+
+        public async Task<Sample> SampleById(int sampleId)
+        {
+            var result = await _context.Samles.FirstAsync(x=>x.Id == sampleId);
+            return result;
+        }
+
         public async Task<EmailSendInfo> EmailSendTaskInfo(int sendTaskId)
         {
             EmailSendInfo result = new EmailSendInfo();
             result.MaxCount = await _context.EmailSendResults.AsQueryable().AsNoTracking().Where(x => x.EmailSendTaskId == sendTaskId).CountAsync();
-            result.BadSendCount = await _context.EmailSendResults.AsQueryable().AsNoTracking().Where(x => x.EmailSendTaskId == sendTaskId && x.IsSuccess == false).CountAsync();
+            result.BadSendCount = await _context.EmailSendResults.AsQueryable().AsNoTracking().Where(x => x.EmailSendTaskId == sendTaskId && x.IsSuccess == false && x.ErrorMessage != null).CountAsync();
             result.SendCount = await _context.EmailSendResults.AsQueryable().AsNoTracking().Where(x => x.EmailSendTaskId == sendTaskId && x.IsSuccess == true && x.ErrorMessage == null).CountAsync();
             return result;
         }
 
-        public async Task<List<EmailSendTask>> EmailSendTaskList(SendTaskStatusEnum status)
+        public async Task<List<EmailSendTask>> EmailSendTaskList(SendTaskStatusEnum status, DateTime leftDate, DateTime rightDate)
         {
             var result = await _context.EmailSendTask
                 .AsNoTracking()
-                .Where(x => x.SendTaskStatus == status.ToString())
+                .Where(x => x.CreateDate > DateTime.SpecifyKind(leftDate.Date, DateTimeKind.Utc)
+                    && x.CreateDate < DateTime.SpecifyKind(rightDate.Date, DateTimeKind.Utc)
+                    && x.SendTaskStatus == status.ToString())
                 .OrderByDescending(x => x.CreateDate)
                 .ToListAsync();
             return result;
@@ -66,13 +108,18 @@ namespace WebEmailSendler.Managers
             return result;
         }
 
-        public async Task UpdateEmailSendResult(List<EmailSendResult> emailSendResults)
+        public async Task BulkUpdateEmailSendResult(List<EmailSendResult> emailSendResults)
         {
             await _context.BulkUpdateAsync(emailSendResults, bulkConfig =>
             {
                 bulkConfig.BatchSize = 5000;
                 bulkConfig.BulkCopyTimeout = 600000;
             });
+        }
+        public void UpdateEmailSendResult(List<EmailSendResult> emailSendResults)
+        {
+            _context.UpdateRange(emailSendResults);
+            _context.SaveChanges();
         }
 
         public async Task UpdateEmailSendTaskJobId(string jobId, int sendEmailTaskId)
@@ -96,7 +143,7 @@ namespace WebEmailSendler.Managers
             var upd = await _context.EmailSendTask.FirstOrDefaultAsync(x => x.Id == sendEmailTaskId);
             if (upd != null)
             {
-                upd.SendTaskStatus = "deleted";
+                upd.SendTaskStatus = SendTaskStatusEnum.deleted.ToString();
                 UpdateEmailSendTask(upd);
                 if (upd != null)
                 {
