@@ -1,6 +1,7 @@
 ﻿
 using Microsoft.Extensions.Options;
 using Serilog;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Mail;
 using WebEmailSendler.Enums;
@@ -13,17 +14,19 @@ namespace WebEmailSendler.Services
     {
         private readonly int TREAD_COUNT;
         private readonly int PACK_SIZE;
+        private readonly SignalHub _hub;
         private readonly FileService _fileService;
         private readonly DataManager _dataManager;
         private readonly SmtpConfiguration _smtpConfiguration;
 
-        public SendlerService(FileService fileService, DataManager dataManager, IConfiguration configuration, IOptions<SmtpConfiguration> smtpConfiguration)
+        public SendlerService(FileService fileService, DataManager dataManager, IConfiguration configuration, IOptions<SmtpConfiguration> smtpConfiguration, SignalHub hub)
         {
             _fileService = fileService;
             _dataManager = dataManager;
             _smtpConfiguration = smtpConfiguration.Value;
             TREAD_COUNT = Convert.ToInt32(configuration.GetSection("TREAD_COUNT").Value);
             PACK_SIZE = Convert.ToInt32(configuration.GetSection("PACK_SIZE").Value);
+            _hub = hub;
         }
 
         public async Task SendEmailByTask(int emailTaskId, CancellationToken token)
@@ -33,73 +36,28 @@ namespace WebEmailSendler.Services
             emailSendTask!.StartDate = DateTime.UtcNow;
             emailSendTask!.SendTaskStatus = SendTaskStatusEnum.started.ToString();
             _dataManager.UpdateEmailSendTask(emailSendTask);
-
+            //делим рассылку на маленькие части.
             var emailPacks = emailList.Chunk(PACK_SIZE);
-            var options = new ParallelOptions()
-            {
-                MaxDegreeOfParallelism = TREAD_COUNT,
-                CancellationToken = token
-            };
             Log.Information($"Start Send - {DateTime.UtcNow} - {emailSendTask.Name}");
+            //информация по количеству отправленых писем
+            var emailinfo = await _dataManager.EmailSendTaskInfo(emailSendTask.Id);
+            emailinfo.SendCount = emailList.Count;
+
             foreach (var emailPack in emailPacks)
             {
                 try
                 {
                     token.ThrowIfCancellationRequested();
-                    await Parallel.ForEachAsync(emailPack, options, async (email, token) =>
-                    {
-                        try
-                        {
-                            var emailBody = _fileService.GenerateEmailBody(
-                                new SendParameters()
-                                {
-                                    Lschet = email.Lschet ?? "",
-                                    Sum = email.Sum ?? "",
-                                    Text = email.Text ?? "",
-                                },
-                                emailSendTask?.HtmlMessage ?? "");
+                    var result = await SendEmailParallel(emailSendTask, emailPack.ToList(), TREAD_COUNT, token);
+                    
+                    //считаем всякое разное и отправляем в хаб
+                    emailinfo.CurrentSendCount += result.emailinfo.SuccessSendCount;
+                    emailinfo.SuccessSendCount += result.emailinfo.SuccessSendCount;
+                    emailinfo.BadSendCount += result.emailinfo.BadSendCount;
 
-                            try
-                            {
-                                var sendResult = await SendEmailAsync(email.Email, emailSendTask?.Subject ?? "Тема письма", emailBody)
-                                    .WaitAsync(TimeSpan.FromMinutes(2));
-                                if (sendResult.Item1 == true)
-                                {
-                                    email.IsSuccess = true;
-                                    email.ErrorMessage = null;
-                                    email.SendDate = DateTime.UtcNow;
-                                }
-                                else
-                                {
-                                    email.IsSuccess = false;
-                                    email.SendDate = DateTime.UtcNow;
-                                    email.ErrorMessage = sendResult.Item2;
-                                }
-                            }
-                            catch (TimeoutException ex)
-                            {
-                                email.IsSuccess = false;
-                                email.SendDate = DateTime.UtcNow;
-                                email.ErrorMessage = ex.Message;
-                                Log.Error($"Error timeout exception send email {email.Email}: {ex.Message}");
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.Error($"Error processing parallel send email: {ex.Message}");
-                        }
-                    });
+                    await UpdatePackResult(result.emailSendResults);
 
-                    Log.Information($"Save Changes - {DateTime.UtcNow}");
-
-                    if (emailPack.Length > 2000)
-                    {
-                        await _dataManager.BulkUpdateEmailSendResult(emailPack.ToList());
-                    }
-                    else
-                    {
-                        _dataManager.UpdateEmailSendResult(emailPack.ToList());
-                    }
+                    await SendInfoHubMessage(emailSendTask, emailinfo);
 #if DEBUG
                     File.AppendAllLinesAsync($"Files\\send_{emailSendTask.Name}", emailPack.Select(x => x.Email));
 #endif
@@ -120,8 +78,82 @@ namespace WebEmailSendler.Services
             }
 
             await SendFinished(emailSendTask, emailList, SendTaskStatusEnum.complete);
-            DataService.CancelTokenTasks.Remove(emailTaskId);
             Log.Information($"End Send - {DateTime.UtcNow} - {emailSendTask.Name}");
+        }
+
+        private async Task SendInfoHubMessage(EmailSendTask emailSendTask, EmailSendInfo emailSendInfo)
+        {
+            await _hub.SendChangeEmailSendInfo(emailSendTask.Id, emailSendInfo);
+        }
+
+        private async Task UpdatePackResult(List<EmailSendResult> emailPack)
+        {
+            if (emailPack.Count > 2000)
+            {
+                await _dataManager.BulkUpdateEmailSendResult(emailPack.ToList());
+            }
+            else
+            {
+                _dataManager.UpdateEmailSendResult(emailPack.ToList());
+            }
+            Log.Information($"Update Pack Result - {DateTime.UtcNow}");
+        }
+
+        private async Task<(EmailSendInfo emailinfo, List<EmailSendResult> emailSendResults)> SendEmailParallel(EmailSendTask emailSendTask, List<EmailSendResult> emailSendResults, int TreadCount, CancellationToken token)
+        {
+            var emailinfo = new EmailSendInfo();
+            var options = new ParallelOptions()
+            {
+                MaxDegreeOfParallelism = TREAD_COUNT,
+                CancellationToken = token
+            };
+
+            await Parallel.ForEachAsync(emailSendResults, options, async (email, token) =>
+            {
+                try
+                {
+                    var emailBody = _fileService.GenerateEmailBody(
+                        new SendParameters()
+                        {
+                            Lschet = email.Lschet ?? "",
+                            Sum = email.Sum ?? "",
+                            Text = email.Text ?? "",
+                        },
+                        emailSendTask?.HtmlMessage ?? "");
+
+                    try
+                    {
+                        var sendResult = await SendEmailAsync(email.Email, emailSendTask?.Subject ?? "Тема письма", emailBody)
+                            .WaitAsync(TimeSpan.FromMinutes(2));
+                        if (sendResult.Item1 == true)
+                        {
+                            email.IsSuccess = true;
+                            email.ErrorMessage = null;
+                            email.SendDate = DateTime.UtcNow;
+                        }
+                        else
+                        {
+                            email.IsSuccess = false;
+                            email.SendDate = DateTime.UtcNow;
+                            email.ErrorMessage = sendResult.Item2;
+                        }
+                    }
+                    catch (TimeoutException ex)
+                    {
+                        email.IsSuccess = false;
+                        email.SendDate = DateTime.UtcNow;
+                        email.ErrorMessage = ex.Message;
+                        Log.Error($"Error timeout exception send email {email.Email}: {ex.Message}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error($"Error processing parallel send email: {ex.Message}");
+                }
+            });
+            emailinfo.SuccessSendCount = emailSendResults.Where(x=>x.IsSuccess == true).ToList().Count;
+            emailinfo.BadSendCount = emailSendResults.Where(x => x.IsSuccess == false).ToList().Count;
+            return (emailinfo, emailSendResults);
         }
 
         private async Task SendFinished(EmailSendTask sendTask, List<EmailSendResult> sendResults, SendTaskStatusEnum status)
@@ -134,10 +166,12 @@ namespace WebEmailSendler.Services
                 sendTask.SendTaskStatus = SendTaskStatusEnum.cancel.ToString();
             }
             await _dataManager.BulkUpdateEmailSendResult(sendResults);
-            var sendCount = await _dataManager.EmailSendTaskInfo(sendTask.Id);
-            sendTask.BadSendCount = sendCount.BadSendCount;
-            sendTask.SendCount = sendCount.SendCount;
+            var info = await _dataManager.EmailSendTaskInfo(sendTask.Id);
+            sendTask.BadSendCount = info.BadSendCount;
+            sendTask.SuccessSendCount = info.SuccessSendCount;
             _dataManager.UpdateEmailSendTask(sendTask);
+            DataService.CancelTokenTasks.Remove(sendTask.Id);
+            await _hub.SendChangeEmailSendStatus(sendTask);
         }
 
         private async Task<Tuple<bool, string>> SendEmailAsync(string email, string subject, string? body)

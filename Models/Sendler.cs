@@ -12,12 +12,18 @@ namespace WebEmailSendler.Models
         public int Id { get; set; }
         public required string Name { get; set; }
         public DateTimeOffset CreateDate { get; set; } = DateTimeOffset.Now;
-        public required string SampleJson { get; set; } 
+        public DateTimeOffset ChangeDate { get; set; } = DateTimeOffset.Now;
+        public required string JsonString { get; set; } = "";
+        public required string HtmlString { get; set; } = "";
     }
     public class EmailSendInfo
     {
         public int MaxCount { get; set; } = 0;
+        [NotMapped]
         public int SendCount { get; set; } = 0;
+        [NotMapped]
+        public int CurrentSendCount { get; set; } = 0;
+        public int SuccessSendCount { get; set; } = 0;
         public int BadSendCount { get; set; } = 0;
     }
 

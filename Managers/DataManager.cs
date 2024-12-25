@@ -30,7 +30,7 @@ namespace WebEmailSendler.Managers
         public async Task UpdateSample(Sample sample)
         {
             var upd = await _context.Samles.AsNoTracking().FirstOrDefaultAsync(x => x.Id == sample.Id);
-            if (sample != null)
+            if (upd != null)
             {
                 _context.Samles.Update(sample);
                 _context.SaveChanges();
@@ -58,7 +58,7 @@ namespace WebEmailSendler.Managers
             EmailSendInfo result = new EmailSendInfo();
             result.MaxCount = await _context.EmailSendResults.AsQueryable().AsNoTracking().Where(x => x.EmailSendTaskId == sendTaskId).CountAsync();
             result.BadSendCount = await _context.EmailSendResults.AsQueryable().AsNoTracking().Where(x => x.EmailSendTaskId == sendTaskId && x.IsSuccess == false && x.ErrorMessage != null).CountAsync();
-            result.SendCount = await _context.EmailSendResults.AsQueryable().AsNoTracking().Where(x => x.EmailSendTaskId == sendTaskId && x.IsSuccess == true && x.ErrorMessage == null).CountAsync();
+            result.SuccessSendCount = await _context.EmailSendResults.AsQueryable().AsNoTracking().Where(x => x.EmailSendTaskId == sendTaskId && x.IsSuccess == true && x.ErrorMessage == null).CountAsync();
             return result;
         }
 

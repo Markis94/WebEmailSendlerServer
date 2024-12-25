@@ -12,6 +12,7 @@ namespace WebEmailSendler.Dependencies
             services.AddScoped<SendlerService>();
             services.AddScoped<DataManager>();
             services.AddScoped<DataService>();
+            services.AddSingleton<SignalHub>();
         }
     }
 }

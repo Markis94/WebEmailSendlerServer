@@ -1,9 +1,12 @@
 using Hangfire;
 using Hangfire.PostgreSql;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Serilog;
 using Serilog.Events;
+using System.Net;
+using WebEmailSendler;
 using WebEmailSendler.Context;
 using WebEmailSendler.Dependencies;
 using WebEmailSendler.Models;
@@ -57,11 +60,12 @@ builder.Services.AddHangfireServer((options) =>
 });
 
 builder.Services.Inject();
+builder.Services.AddSignalR();
 ///swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-string[] cors = builder.Configuration.GetSection("Cores").Get<string[]>();
+string[] cors = builder.Configuration?.GetSection("Cores").Get<string[]>() ?? [IPAddress.Loopback.ToString()];
 
 // добавляем сервисы CORS
 builder.Services
@@ -89,9 +93,8 @@ Log.Logger = new LoggerConfiguration()
 builder.Logging.ClearProviders();
 builder.Logging.AddSerilog();
 
-Log.Information("Start App");
+Log.Information($"Start App - {IPAddress.Loopback}");
 var app = builder.Build();
-
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
@@ -122,4 +125,5 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 app.MapControllers();
+app.MapHub<SignalHub>("/hub");
 app.Run();

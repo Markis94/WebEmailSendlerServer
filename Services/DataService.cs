@@ -41,7 +41,7 @@ namespace WebEmailSendler.Services
                     {
                         BadSendCount = task.BadSendCount,
                         MaxCount = task.MaxCount,
-                        SendCount = task.SendCount
+                        SuccessSendCount = task.SuccessSendCount
                     };
                 }
             }
@@ -187,6 +187,7 @@ namespace WebEmailSendler.Services
         }
         public async Task UpdateSample(Sample sample)
         {
+            sample.ChangeDate = DateTime.UtcNow;
             await _dataManager.UpdateSample(sample);
         }
     }
