@@ -1,6 +1,5 @@
 using Hangfire;
 using Hangfire.PostgreSql;
-using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Serilog;
@@ -40,7 +39,7 @@ string connection = builder.Configuration.GetConnectionString("Connection") ?? "
 builder.Services.Configure<SmtpConfiguration>(builder.Configuration.GetSection("SmtpConfiguration"));
 builder.Services.AddDbContext<MyDbContext>(options => options.UseNpgsql(connection));
 
-builder.Services.AddHangfire(x => x.UsePostgreSqlStorage(c => c.UseNpgsqlConnection(connection), 
+builder.Services.AddHangfire(x => x.UsePostgreSqlStorage(c => c.UseNpgsqlConnection(connection),
     new PostgreSqlStorageOptions
     {
         InvisibilityTimeout = TimeSpan.FromHours(30), // Тайм-аут невидимости задач (увеличьте для длительных задач)
@@ -60,7 +59,14 @@ builder.Services.AddHangfireServer((options) =>
 });
 
 builder.Services.Inject();
-builder.Services.AddSignalR();
+builder.Services.AddSignalR()
+        .AddHubOptions<SignalHub>(options =>
+        {
+            options.EnableDetailedErrors = true;  // Включить подробные ошибки для отладки
+            options.ClientTimeoutInterval = TimeSpan.FromMinutes(1);  // Тайм-аут для клиентов
+            options.KeepAliveInterval = TimeSpan.FromSeconds(15);  // Интервал проверки соединения
+            options.HandshakeTimeout = TimeSpan.FromSeconds(15);  // Тайм-аут для рукопожатий
+        });
 ///swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

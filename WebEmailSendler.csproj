@@ -10,6 +10,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Files\**" />
+    <Content Remove="Files\**" />
+    <EmbeddedResource Remove="Files\**" />
+    <None Remove="Files\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="CsvHelper" Version="33.0.1" />
     <PackageReference Include="EFCore.BulkExtensions" Version="8.1.1" />
     <PackageReference Include="Hangfire" Version="1.8.14" />
@@ -43,13 +50,6 @@
 
   <ItemGroup>
     <Folder Include="Config\" />
-    <Folder Include="Files\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="Files\logo_mrg.webp">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project>
