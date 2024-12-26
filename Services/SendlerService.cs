@@ -29,6 +29,13 @@ namespace WebEmailSendler.Services
             _hub = hub;
         }
 
+        public async Task SendTestMessage(TestSend testSend)
+        {
+            foreach (var email in testSend.Emails) {
+                await SendEmailAsync(email, testSend.Subject, testSend.HtmlString);
+            }
+        }
+
         public async Task SendEmailByTask(int emailTaskId, CancellationToken token)
         {
             var emailList = await _dataManager.GetEmailSendResult(emailTaskId);

@@ -13,12 +13,12 @@ namespace WebEmailSendler.Controllers
     {
         private readonly FileService _fileService;
         private readonly DataService _dataService;
-        private readonly SendlerService sendlerService;
+        private readonly SendlerService _sendlerService;
         public MainController(FileService fileService, DataService dataService, SendlerService sendlerService)
         {
             _fileService = fileService;
             _dataService = dataService;
-            this.sendlerService = sendlerService;
+            _sendlerService = sendlerService;
         }
 
         [HttpGet("getEmailSendTaskInfo")]
@@ -90,6 +90,13 @@ namespace WebEmailSendler.Controllers
         public IActionResult DeleteTaskAndData([FromQuery] int emailSendTaskId)
         {
             var jobId = BackgroundJob.Enqueue(() => _dataService.DeleteTaskAndData(emailSendTaskId));
+            return Ok();
+        }
+
+        [HttpPost("sendTestMessage")]
+        public async Task<IActionResult> SendTestMessage(TestSend testSend)
+        {
+            await _sendlerService.SendTestMessage(testSend);
             return Ok();
         }
 

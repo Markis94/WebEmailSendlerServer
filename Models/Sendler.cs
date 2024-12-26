@@ -16,24 +16,7 @@ namespace WebEmailSendler.Models
         public required string JsonString { get; set; } = "";
         public required string HtmlString { get; set; } = "";
     }
-    public class EmailSendInfo
-    {
-        public int MaxCount { get; set; } = 0;
-        [NotMapped]
-        public int SendCount { get; set; } = 0;
-        [NotMapped]
-        public int CurrentSendCount { get; set; } = 0;
-        public int SuccessSendCount { get; set; } = 0;
-        public int BadSendCount { get; set; } = 0;
-    }
-
-    public class Part<EmailSendTask>
-    {
-        public List<EmailSendTask> Items { get; set; }
-        public int TotalCount { get; set; }
-    }
-
-    public class EmailSendTask: EmailSendInfo
+    public class EmailSendTask : EmailSendInfo
     {
         [Key]
         public int Id { get; set; }
@@ -55,7 +38,7 @@ namespace WebEmailSendler.Models
 
     [Index(nameof(Email))]
     [Index(nameof(IsSuccess))]
-    public class EmailSendResult: SendParameters
+    public class EmailSendResult : SendParameters
     {
         [Key]
         public int Id { get; set; }
@@ -70,6 +53,31 @@ namespace WebEmailSendler.Models
         public bool IsSuccess { get; set; }
         public string? ErrorMessage { get; set; }
         public DateTimeOffset SendDate { get; set; }
+    }
+    //-------------------------------------------------
+
+    public class TestSend
+    {
+        [Required]
+        public required List<string> Emails { get; set; }
+        public string Subject { get; set; } = "Тестовое письмо " + DateTime.Now;
+        [Required]
+        public required string HtmlString { get; set; }
+    }
+    public class EmailSendInfo
+    {
+        public int MaxCount { get; set; } = 0;
+        [NotMapped]
+        public int SendCount { get; set; } = 0;
+        [NotMapped]
+        public int CurrentSendCount { get; set; } = 0;
+        public int SuccessSendCount { get; set; } = 0;
+        public int BadSendCount { get; set; } = 0;
+    }
+    public class Part<EmailSendTask>
+    {
+        public List<EmailSendTask> Items { get; set; }
+        public int TotalCount { get; set; }
     }
 
     public class EmailData
