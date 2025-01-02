@@ -64,7 +64,7 @@ namespace WebEmailSendler.Services
         {
             CancellationTokenSource cancelTokenSource = new CancellationTokenSource();
             CancelTokenTasks.Add(emailSendTask.Id, cancelTokenSource);
-            var jobId = BackgroundJob.Enqueue(() => _sendlerService.SendEmailByTask(emailSendTask.Id, cancelTokenSource.Token));
+            var jobId = BackgroundJob.Schedule(() => _sendlerService.SendEmailByTask(emailSendTask.Id, cancelTokenSource.Token), emailSendTask.StartDate);
             emailSendTask.JobId = jobId;
             _dataManager.UpdateEmailSendTask(emailSendTask);
             return jobId;
@@ -96,6 +96,7 @@ namespace WebEmailSendler.Services
             CancellationTokenSource cancelTokenSource = new CancellationTokenSource();
             CancelTokenTasks.Add(emailSendTask.Id, cancelTokenSource);
             var jobId = BackgroundJob.Enqueue(() => _sendlerService.SendEmailByTask(emailSendTask.Id, cancelTokenSource.Token));
+            emailSendTask.StartDate = DateTimeOffset.Now;
             emailSendTask.JobId = jobId;
             _dataManager.UpdateEmailSendTask(emailSendTask);
             return jobId;

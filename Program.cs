@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Serilog;
 using Serilog.Events;
+using System.Globalization;
 using System.Net;
 using WebEmailSendler;
 using WebEmailSendler.Context;
@@ -99,7 +100,14 @@ Log.Logger = new LoggerConfiguration()
 builder.Logging.ClearProviders();
 builder.Logging.AddSerilog();
 
+// Установите культуру для всего приложения
+CultureInfo russianCulture = new CultureInfo("ru-RU");
+Thread.CurrentThread.CurrentCulture = russianCulture;
+Thread.CurrentThread.CurrentUICulture = russianCulture;
+
 Log.Information($"Start App - {IPAddress.Loopback}");
+Console.WriteLine(DateTimeOffset.Now.ToString("F"));
+
 var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {

@@ -49,7 +49,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Config\" />
+    <None Update="Dockerfile 2">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

@@ -23,7 +23,7 @@ namespace WebEmailSendler.Managers
 
         public async Task<IList<Sample>> SampleList()
         {
-            var result = await _context.Samles.AsNoTracking().OrderByDescending(x => x.CreateDate).ToListAsync();
+            var result = await _context.Samles.AsNoTracking().Select(x=> new Sample() { Id =x.Id, ChangeDate= x.ChangeDate, CreateDate =x.CreateDate, Name = x.Name, HtmlString =x.HtmlString, JsonString = ""}).OrderByDescending(x => x.CreateDate).ToListAsync();
             return result;
         }
 
