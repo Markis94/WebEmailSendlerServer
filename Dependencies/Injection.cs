@@ -8,10 +8,15 @@ namespace WebEmailSendler.Dependencies
     {
         public static void Inject(this IServiceCollection services)
         {
+            services.AddScoped<DataManager>();
+
             services.AddScoped<FileService>();
             services.AddScoped<SendlerService>();
-            services.AddScoped<DataManager>();
             services.AddScoped<DataService>();
+            services.AddScoped<JobService>();
+            services.AddScoped<SampleService>();
+            //services.AddSingleton<ConfigurationService>();
+
             services.AddSingleton<SignalHub>();
         }
     }

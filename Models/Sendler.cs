@@ -16,7 +16,8 @@ namespace WebEmailSendler.Models
         public required string JsonString { get; set; } = "";
         public required string HtmlString { get; set; } = "";
     }
-    public class EmailSendTask : EmailSendInfo
+
+    public class EmailSendTask : SendInfo
     {
         [Key]
         public int Id { get; set; }
@@ -30,7 +31,7 @@ namespace WebEmailSendler.Models
         public string JobId { get; set; } = string.Empty;
 
         [NotMapped]
-        public EmailSendInfo? EmailSendInfo { get; set; } = null;
+        public SendInfo? EmailSendInfo { get; set; } = null;
 
         [NotMapped]
         public string? CsvData { get; set; }
@@ -38,7 +39,7 @@ namespace WebEmailSendler.Models
 
     [Index(nameof(Email))]
     [Index(nameof(IsSuccess))]
-    public class EmailSendResult : SendParameters
+    public class EmailSendData : SendParameters
     {
         [Key]
         public int Id { get; set; }
@@ -64,7 +65,7 @@ namespace WebEmailSendler.Models
         [Required]
         public required string HtmlString { get; set; }
     }
-    public class EmailSendInfo
+    public class SendInfo
     {
         public int MaxCount { get; set; } = 0;
         [NotMapped]
@@ -80,7 +81,7 @@ namespace WebEmailSendler.Models
         public int TotalCount { get; set; }
     }
 
-    public class EmailData
+    public class EmailCsvData
     {
         public required string Email { get; set; }
         public SendParameters? SendParameters { get; set; }
@@ -97,8 +98,6 @@ namespace WebEmailSendler.Models
     {
         public bool Authorize(DashboardContext context)
         {
-            //var httpContext = context.GetHttpContext();
-            // Allow all authenticated users to see the Dashboard (potentially dangerous).
             return true;
         }
     }

@@ -23,7 +23,10 @@ namespace WebEmailSendler.Managers
 
         public async Task<IList<Sample>> SampleList()
         {
-            var result = await _context.Samles.AsNoTracking().Select(x=> new Sample() { Id =x.Id, ChangeDate= x.ChangeDate, CreateDate =x.CreateDate, Name = x.Name, HtmlString =x.HtmlString, JsonString = ""}).OrderByDescending(x => x.CreateDate).ToListAsync();
+            var result = await _context.Samles.AsNoTracking()
+                .Select(x=> new Sample() { Id =x.Id, ChangeDate= x.ChangeDate, CreateDate =x.CreateDate, Name = x.Name, HtmlString =x.HtmlString, JsonString = ""})
+                .OrderByDescending(x => x.CreateDate)
+                .ToListAsync();
             return result;
         }
 
@@ -53,12 +56,12 @@ namespace WebEmailSendler.Managers
             return result;
         }
 
-        public async Task<EmailSendInfo> EmailSendTaskInfo(int sendTaskId)
+        public async Task<SendInfo> EmailSendTaskInfo(int sendTaskId)
         {
-            EmailSendInfo result = new EmailSendInfo();
-            result.MaxCount = await _context.EmailSendResults.AsQueryable().AsNoTracking().Where(x => x.EmailSendTaskId == sendTaskId).CountAsync();
-            result.BadSendCount = await _context.EmailSendResults.AsQueryable().AsNoTracking().Where(x => x.EmailSendTaskId == sendTaskId && x.IsSuccess == false && x.ErrorMessage != null).CountAsync();
-            result.SuccessSendCount = await _context.EmailSendResults.AsQueryable().AsNoTracking().Where(x => x.EmailSendTaskId == sendTaskId && x.IsSuccess == true && x.ErrorMessage == null).CountAsync();
+            SendInfo result = new SendInfo();
+            result.MaxCount = await _context.EmailSendData.AsQueryable().AsNoTracking().Where(x => x.EmailSendTaskId == sendTaskId).CountAsync();
+            result.BadSendCount = await _context.EmailSendData.AsQueryable().AsNoTracking().Where(x => x.EmailSendTaskId == sendTaskId && x.IsSuccess == false && x.ErrorMessage != null).CountAsync();
+            result.SuccessSendCount = await _context.EmailSendData.AsQueryable().AsNoTracking().Where(x => x.EmailSendTaskId == sendTaskId && x.IsSuccess == true && x.ErrorMessage == null).CountAsync();
             return result;
         }
 
@@ -87,7 +90,7 @@ namespace WebEmailSendler.Managers
             return emailSendTask.Id;
         }
 
-        public async Task CreateEmailSendResult(List<EmailSendResult> emailSendResults)
+        public async Task CreateEmailSendResult(List<EmailSendData> emailSendResults)
         {
             await _context.BulkInsertAsync(emailSendResults, bulkConfig =>
             {
@@ -102,13 +105,13 @@ namespace WebEmailSendler.Managers
             return result;
         }
 
-        public async Task<List<EmailSendResult>> GetEmailSendResult(int sendlerEmailTaskId)
+        public async Task<List<EmailSendData>> GetEmailSendResult(int sendlerEmailTaskId)
         {
-            var result = await _context.EmailSendResults.AsQueryable().AsNoTracking().Where(x => x.EmailSendTaskId == sendlerEmailTaskId && x.IsSuccess != true).ToListAsync();
+            var result = await _context.EmailSendData.AsQueryable().AsNoTracking().Where(x => x.EmailSendTaskId == sendlerEmailTaskId && x.IsSuccess != true).ToListAsync();
             return result;
         }
 
-        public async Task BulkUpdateEmailSendResult(List<EmailSendResult> emailSendResults)
+        public async Task BulkUpdateEmailSendResult(List<EmailSendData> emailSendResults)
         {
             await _context.BulkUpdateAsync(emailSendResults, bulkConfig =>
             {
@@ -116,7 +119,7 @@ namespace WebEmailSendler.Managers
                 bulkConfig.BulkCopyTimeout = 600000;
             });
         }
-        public void UpdateEmailSendResult(List<EmailSendResult> emailSendResults)
+        public void UpdateEmailSendResult(List<EmailSendData> emailSendResults)
         {
             _context.UpdateRange(emailSendResults);
             _context.SaveChanges();
@@ -138,9 +141,9 @@ namespace WebEmailSendler.Managers
             _context.SaveChanges();
         }
 
-        public async Task DeleteEmailSendTask(int sendEmailTaskId)
+        public void DeleteEmailSendTask(int sendEmailTaskId)
         {
-            var upd = await _context.EmailSendTask.FirstOrDefaultAsync(x => x.Id == sendEmailTaskId);
+            var upd = _context.EmailSendTask.FirstOrDefault(x => x.Id == sendEmailTaskId);
             if (upd != null)
             {
                 upd.SendTaskStatus = SendTaskStatusEnum.deleted.ToString();
@@ -153,29 +156,29 @@ namespace WebEmailSendler.Managers
             }
         }
 
-        public Part<EmailSendResult> EmailResultPath(string? inputValue, int sendTaskId, int pageNumber, int pageSize, string? sortField, string? orderBy)
+        public Part<EmailSendData> EmailResultPath(string? inputValue, int sendTaskId, int pageNumber, int pageSize, string? sortField, string? orderBy)
         {
-            IQueryable<EmailSendResult> data;
+            IQueryable<EmailSendData> data;
             if (inputValue?.Length > 1)
             {
                 data =
-                   _context.EmailSendResults.AsNoTracking().AsQueryable()
+                   _context.EmailSendData.AsNoTracking().AsQueryable()
                    .Where(x => x.EmailSendTaskId == sendTaskId && x.Email.Contains(inputValue))
                    .ToPageList(pageNumber, pageSize, sortField, orderBy);
             }
             else
             {
                 data =
-                   _context.EmailSendResults.AsNoTracking().AsQueryable()
+                   _context.EmailSendData.AsNoTracking().AsQueryable()
                    .Where(x => x.EmailSendTaskId == sendTaskId)
                    .ToPageList(pageNumber, pageSize, sortField, orderBy);
             }
-            var count = _context.EmailSendResults
+            var count = _context.EmailSendData
                 .AsNoTracking()
                 .Where(x => x.EmailSendTaskId == sendTaskId)
                 .Count();
 
-            var resultPart = new Part<EmailSendResult>()
+            var resultPart = new Part<EmailSendData>()
             {
                 TotalCount = count,
                 Items = data.ToList()

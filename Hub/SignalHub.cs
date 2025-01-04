@@ -5,7 +5,7 @@ namespace WebEmailSendler
 {
     public class SignalHub : Hub
     {
-        public async Task SendChangeEmailSendInfo(int emailSendTaskId, EmailSendInfo emailSendInfo)
+        public async Task SendChangeEmailSendInfo(int emailSendTaskId, SendInfo emailSendInfo)
         {
             await Clients.All.SendAsync("ChangeEmailSendInfo", emailSendTaskId, emailSendInfo);
         }

@@ -1,6 +1,5 @@
 ﻿using CsvHelper;
 using CsvHelper.Configuration;
-using System.Formats.Asn1;
 using System.Globalization;
 using WebEmailSendler.Models;
 
@@ -9,9 +8,9 @@ namespace WebEmailSendler.Services
     public class FileService
     {
 
-        public List<EmailData> ReadEmailDataFromCsv(string csvData)
+        public List<EmailCsvData> ReadEmailDataFromCsv(string csvData)
         {
-            var emailDataList = new List<EmailData>();
+            var emailDataList = new List<EmailCsvData>();
             if(csvData == null) 
                 return emailDataList;
 
@@ -30,7 +29,7 @@ namespace WebEmailSendler.Services
             using var reader = new StreamReader(contents);
             using (var csv = new CsvReader(reader, conf))
             {
-                emailDataList.AddRange(csv.GetRecords<EmailData>());
+                emailDataList.AddRange(csv.GetRecords<EmailCsvData>());
             }
             return emailDataList;
         }
@@ -43,7 +42,8 @@ namespace WebEmailSendler.Services
                     return string.Empty;
                 htmlMesage = htmlMesage.Replace("{l}", parameters.Lschet).Replace("{s}", parameters.Sum).Replace("{t}", parameters.Text);
                 var endBody = "</body>";
-                htmlMesage = htmlMesage.Insert(htmlMesage.LastIndexOf(endBody), $"<div style=\"display: flex;\n\rjustify-content: center;\"><small style=\"font-size: 10px; visibility: hidden;\">Уведомление № {Guid.NewGuid()}</small></div>\n");
+                htmlMesage = htmlMesage.Insert(htmlMesage.LastIndexOf(endBody), 
+                    $"<div style=\"display: flex;\n\rjustify-content: center;\"><small style=\"font-size: 10px; visibility: hidden;\">Уведомление № {Guid.NewGuid()}</small></div>\n");
                 return htmlMesage;
             }
             catch(Exception ex)

@@ -1,7 +1,6 @@
 ﻿
 using Microsoft.Extensions.Options;
 using Serilog;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Mail;
 using WebEmailSendler.Enums;
@@ -49,7 +48,6 @@ namespace WebEmailSendler.Services
             //информация по количеству отправленых писем
             var emailinfo = await _dataManager.EmailSendTaskInfo(emailSendTask.Id);
             emailinfo.SendCount = emailList.Count;
-
             foreach (var emailPack in emailPacks)
             {
                 try
@@ -88,12 +86,12 @@ namespace WebEmailSendler.Services
             Log.Information($"End Send - {DateTime.UtcNow} - {emailSendTask.Name}");
         }
 
-        private async Task SendInfoHubMessage(EmailSendTask emailSendTask, EmailSendInfo emailSendInfo)
+        private async Task SendInfoHubMessage(EmailSendTask emailSendTask, SendInfo emailSendInfo)
         {
             await _hub.SendChangeEmailSendInfo(emailSendTask.Id, emailSendInfo);
         }
 
-        private async Task UpdatePackResult(List<EmailSendResult> emailPack)
+        private async Task UpdatePackResult(List<EmailSendData> emailPack)
         {
             if (emailPack.Count > 2000)
             {
@@ -106,9 +104,9 @@ namespace WebEmailSendler.Services
             Log.Information($"Update Pack Result - {DateTime.UtcNow}");
         }
 
-        private async Task<(EmailSendInfo emailinfo, List<EmailSendResult> emailSendResults)> SendEmailParallel(EmailSendTask emailSendTask, List<EmailSendResult> emailSendResults, int TreadCount, CancellationToken token)
+        private async Task<(SendInfo emailinfo, List<EmailSendData> emailSendResults)> SendEmailParallel(EmailSendTask emailSendTask, List<EmailSendData> emailSendResults, int TreadCount, CancellationToken token)
         {
-            var emailinfo = new EmailSendInfo();
+            var emailinfo = new SendInfo();
             var options = new ParallelOptions()
             {
                 MaxDegreeOfParallelism = TREAD_COUNT,
@@ -163,7 +161,7 @@ namespace WebEmailSendler.Services
             return (emailinfo, emailSendResults);
         }
 
-        private async Task SendFinished(EmailSendTask sendTask, List<EmailSendResult> sendResults, SendTaskStatusEnum status)
+        private async Task SendFinished(EmailSendTask sendTask, List<EmailSendData> sendResults, SendTaskStatusEnum status)
         {
             sendTask.SendTaskStatus = SendTaskStatusEnum.complete.ToString();
             sendTask.EndDate = DateTime.UtcNow;
@@ -177,7 +175,7 @@ namespace WebEmailSendler.Services
             sendTask.BadSendCount = info.BadSendCount;
             sendTask.SuccessSendCount = info.SuccessSendCount;
             _dataManager.UpdateEmailSendTask(sendTask);
-            DataService.CancelTokenTasks.Remove(sendTask.Id);
+            ConfigurationService.CancelTokenTasks.Remove(sendTask.Id);
             await _hub.SendChangeEmailSendStatus(sendTask);
         }
 

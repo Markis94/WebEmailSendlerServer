@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using WebEmailSendler.Context;
@@ -11,9 +12,11 @@ using WebEmailSendler.Context;
 namespace WebEmailSendler.Migrations
 {
     [DbContext(typeof(MyDbContext))]
-    partial class MyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250102093859_EmailSendData")]
+    partial class EmailSendData
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -63,7 +66,7 @@ namespace WebEmailSendler.Migrations
 
                     b.HasIndex("IsSuccess");
 
-                    b.ToTable("EmailSendData");
+                    b.ToTable("EmailSendResults");
                 });
 
             modelBuilder.Entity("WebEmailSendler.Models.EmailSendTask", b =>
