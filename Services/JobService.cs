@@ -18,7 +18,7 @@ namespace WebEmailSendler.Services
 
         public string ReCreateSendJob(EmailSendTask emailSendTask)
         {
-            //emailSendTask.StartDate = DateTimeOffset.Now;
+            emailSendTask.StartDate = DateTimeOffset.Now.AddSeconds(10);
             emailSendTask.SendTaskStatus = SendTaskStatusEnum.created.ToString();
 
             emailSendTask.JobId = CreateBackgroundJob(emailSendTask);
@@ -29,13 +29,13 @@ namespace WebEmailSendler.Services
 
         public async Task CancelSendJob(int emailSendTaskId)
         {
-            await ConfigurationService.CancelAsync(emailSendTaskId);
+            var task = await _dataManager.GetEmailSendTask(emailSendTaskId) ?? throw new Exception("Не удалось найти задание");
 
-            //var task = await _dataManager.GetEmailSendTask(emailSendTaskId) ?? throw new Exception("Не удалось найти задание");
-            //BackgroundJob.Delete(task.JobId);
+            await ConfigurationService.CancelAsync(task.Id);
+            BackgroundJob.Delete(task.JobId);
 
-            //task.SendTaskStatus = SendTaskStatusEnum.cancel.ToString();
-            //_dataManager.UpdateEmailSendTask(task);
+            task.SendTaskStatus = SendTaskStatusEnum.cancel.ToString();
+            _dataManager.UpdateEmailSendTask(task);
         }
 
         public string DeleteSendJob(int emailSendTaskId)
@@ -46,8 +46,8 @@ namespace WebEmailSendler.Services
 
         public string CreateBackgroundJob(EmailSendTask emailSendTask)
         {
-            var token = ConfigurationService.AddToken(emailSendTask.Id);
-            var jobId = BackgroundJob.Enqueue(() => _sendlerService.SendEmailByTask(emailSendTask.Id, token));
+            CancellationToken token = ConfigurationService.AddToken(emailSendTask.Id);
+            var jobId = BackgroundJob.Schedule(() => _sendlerService.SendEmailByTask(emailSendTask.Id, token), emailSendTask.StartDate);
             return jobId;
         }
         public void DeleteSendData(int emailSendTaskId)

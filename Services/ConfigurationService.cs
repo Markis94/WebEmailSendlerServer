@@ -15,8 +15,7 @@ namespace WebEmailSendler.Services
         public static async Task CancelAsync(int emailSendTaskId)
         {
             var token = CancelTokenTasks.GetValueOrDefault(emailSendTaskId);
-            if (token != null)
-            {
+            if (token != null) {
                 await token.CancelAsync();
             }
         }

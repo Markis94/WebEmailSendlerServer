@@ -53,6 +53,7 @@ namespace WebEmailSendler.Services
                 try
                 {
                     token.ThrowIfCancellationRequested();
+                    Console.WriteLine("Token Is Cancellation Requested " + token.IsCancellationRequested);
                     var result = await SendEmailParallel(emailSendTask, emailPack.ToList(), TREAD_COUNT, token);
                     
                     //считаем всякое разное и отправляем в хаб
@@ -64,15 +65,15 @@ namespace WebEmailSendler.Services
 
                     await SendInfoHubMessage(emailSendTask, emailinfo);
 #if DEBUG
-                    File.AppendAllLinesAsync($"Files\\send_{emailSendTask.Name}", emailPack.Select(x => x.Email));
+                    await File.AppendAllLinesAsync($"Files\\send_{emailSendTask.Name}", emailPack.Select(x => x.Email));
 #endif
                 }
                 catch (OperationCanceledException e)
                 {
-#if DEBUG
-                    File.AppendAllLinesAsync($"Files\\send_{emailSendTask.Name}", emailPack.Select(x => x.Email));
-#endif
                     Log.Information($"Cancel Information: {e.Message}");
+#if DEBUG
+                    await File.AppendAllLinesAsync($"Files\\send_{emailSendTask.Name}", emailPack.Select(x => x.Email));
+#endif
                     await SendFinished(emailSendTask, emailList, SendTaskStatusEnum.cancel);
                     return;
                 }
@@ -117,6 +118,7 @@ namespace WebEmailSendler.Services
             {
                 try
                 {
+                    token.ThrowIfCancellationRequested();
                     var emailBody = _fileService.GenerateEmailBody(
                         new SendParameters()
                         {
@@ -150,6 +152,11 @@ namespace WebEmailSendler.Services
                         email.ErrorMessage = ex.Message;
                         Log.Error($"Error timeout exception send email {email.Email}: {ex.Message}");
                     }
+                }
+                catch (OperationCanceledException e)
+                {
+                    Log.Information($"Cancel Information: {e.Message}");
+                    return;
                 }
                 catch (Exception ex)
                 {

@@ -63,7 +63,7 @@ namespace WebEmailSendler.Migrations
 
                     b.HasIndex("IsSuccess");
 
-                    b.ToTable("EmailSendData");
+                    b.ToTable("EmailSendData", (string)null);
                 });
 
             modelBuilder.Entity("WebEmailSendler.Models.EmailSendTask", b =>
@@ -114,7 +114,7 @@ namespace WebEmailSendler.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("EmailSendTask");
+                    b.ToTable("EmailSendTask", (string)null);
                 });
 
             modelBuilder.Entity("WebEmailSendler.Models.Sample", b =>
@@ -145,7 +145,7 @@ namespace WebEmailSendler.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Samles");
+                    b.ToTable("Samles", (string)null);
                 });
 
             modelBuilder.Entity("WebEmailSendler.Models.EmailSendData", b =>
