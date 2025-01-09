@@ -80,9 +80,7 @@ namespace WebEmailSendler.Services
 #endif
                 }
             }
-
             await SendFinished(emailSendTask, emailList, SendTaskStatusEnum.complete);
-            Log.Information($"End Send - {DateTime.UtcNow} - {emailSendTask.Name}");
         }
 
         private async Task SendInfoHubMessage(EmailSendTask emailSendTask, SendInfo emailSendInfo)
@@ -182,6 +180,7 @@ namespace WebEmailSendler.Services
             _dataManager.UpdateEmailSendTask(sendTask);
             TokenHub.CancelTokenTasks.Remove(sendTask.Id);
             await _hub.SendChangeEmailSendStatus(sendTask);
+            Log.Information($"End Send - {DateTime.UtcNow} - {emailSendTask.Name}");
         }
 
         private async Task<Tuple<bool, string>> SendEmailAsync(string email, string subject, string? body)
