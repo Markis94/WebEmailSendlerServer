@@ -39,12 +39,13 @@ namespace WebEmailSendler.Services
         {
             var emailList = await _dataManager.GetEmailSendResult(emailTaskId);
             var emailSendTask = await _dataManager.GetEmailSendTask(emailTaskId);
+            Log.Information($"Start Send - {DateTime.UtcNow} - {emailSendTask?.Name ?? "" }");
+
             emailSendTask!.StartDate = DateTime.UtcNow;
             emailSendTask!.SendTaskStatus = SendTaskStatusEnum.started.ToString();
             _dataManager.UpdateEmailSendTask(emailSendTask);
             //делим рассылку на маленькие части.
             var emailPacks = emailList.Chunk(PACK_SIZE);
-            Log.Information($"Start Send - {DateTime.UtcNow} - {emailSendTask.Name}");
             //информация по количеству отправленых писем
             var emailinfo = await _dataManager.EmailSendTaskInfo(emailSendTask.Id);
             emailinfo.SendCount = emailList.Count;
@@ -53,33 +54,30 @@ namespace WebEmailSendler.Services
                 try
                 {
                     token.ThrowIfCancellationRequested();
-                    Console.WriteLine("Token Is Cancellation Requested " + token.IsCancellationRequested);
                     var result = await SendEmailParallel(emailSendTask, emailPack.ToList(), TREAD_COUNT, token);
-                    
+
                     //считаем всякое разное и отправляем в хаб
                     emailinfo.CurrentSendCount += result.emailinfo.SuccessSendCount;
                     emailinfo.SuccessSendCount += result.emailinfo.SuccessSendCount;
                     emailinfo.BadSendCount += result.emailinfo.BadSendCount;
 
                     await UpdatePackResult(result.emailSendResults);
-
                     await SendInfoHubMessage(emailSendTask, emailinfo);
-#if DEBUG
-                    await File.AppendAllLinesAsync($"Files\\send_{emailSendTask.Name}", emailPack.Select(x => x.Email));
-#endif
                 }
                 catch (OperationCanceledException e)
                 {
                     Log.Information($"Cancel Information: {e.Message}");
-#if DEBUG
-                    await File.AppendAllLinesAsync($"Files\\send_{emailSendTask.Name}", emailPack.Select(x => x.Email));
-#endif
                     await SendFinished(emailSendTask, emailList, SendTaskStatusEnum.cancel);
                     return;
                 }
                 catch (Exception e)
                 {
                     Log.Information($"Exception: {e.Message}");
+                }
+                finally {
+#if DEBUG
+                    await File.AppendAllLinesAsync($"Files\\send_{emailSendTask.Name}", emailPack.Select(x => x.Email), token);
+#endif
                 }
             }
 
@@ -182,7 +180,7 @@ namespace WebEmailSendler.Services
             sendTask.BadSendCount = info.BadSendCount;
             sendTask.SuccessSendCount = info.SuccessSendCount;
             _dataManager.UpdateEmailSendTask(sendTask);
-            ConfigurationService.CancelTokenTasks.Remove(sendTask.Id);
+            TokenHub.CancelTokenTasks.Remove(sendTask.Id);
             await _hub.SendChangeEmailSendStatus(sendTask);
         }
 

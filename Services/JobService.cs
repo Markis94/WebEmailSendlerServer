@@ -12,16 +12,20 @@ namespace WebEmailSendler.Services
         public string CreateSendJob(EmailSendTask emailSendTask)
         {
             emailSendTask.JobId = CreateBackgroundJob(emailSendTask);
+
+            emailSendTask.SendTaskStatus = SendTaskStatusEnum.started.ToString();
             _dataManager.UpdateEmailSendTask(emailSendTask);
+
             return emailSendTask.JobId;
         }
 
         public string ReCreateSendJob(EmailSendTask emailSendTask)
         {
-            emailSendTask.StartDate = DateTimeOffset.Now.AddSeconds(10);
-            emailSendTask.SendTaskStatus = SendTaskStatusEnum.created.ToString();
 
             emailSendTask.JobId = CreateBackgroundJob(emailSendTask);
+
+            emailSendTask.StartDate = DateTimeOffset.Now.AddSeconds(10);
+            emailSendTask.SendTaskStatus = SendTaskStatusEnum.created.ToString();
             _dataManager.UpdateEmailSendTask(emailSendTask);
 
             return emailSendTask.JobId;
@@ -31,7 +35,7 @@ namespace WebEmailSendler.Services
         {
             var task = await _dataManager.GetEmailSendTask(emailSendTaskId) ?? throw new Exception("Не удалось найти задание");
 
-            await ConfigurationService.CancelAsync(task.Id);
+            await TokenHub.CancelAsync(task.Id);
             BackgroundJob.Delete(task.JobId);
 
             task.SendTaskStatus = SendTaskStatusEnum.cancel.ToString();
@@ -46,14 +50,14 @@ namespace WebEmailSendler.Services
 
         public string CreateBackgroundJob(EmailSendTask emailSendTask)
         {
-            CancellationToken token = ConfigurationService.AddToken(emailSendTask.Id);
-            var jobId = BackgroundJob.Schedule(() => _sendlerService.SendEmailByTask(emailSendTask.Id, token), emailSendTask.StartDate);
+            CancellationToken token = TokenHub.AddToken(emailSendTask.Id);
+            var jobId = BackgroundJob.Schedule(() => _sendlerService.SendEmailByTask(emailSendTask.Id, token), emailSendTask?.StartDate ?? DateTimeOffset.Now);
             return jobId;
         }
         public void DeleteSendData(int emailSendTaskId)
         {
             _dataManager.DeleteEmailSendTask(emailSendTaskId);
-            ConfigurationService.CancelTokenTasks.Remove(emailSendTaskId);
+            TokenHub.CancelTokenTasks.Remove(emailSendTaskId);
         }
     }
 }
