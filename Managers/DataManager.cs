@@ -69,8 +69,8 @@ namespace WebEmailSendler.Managers
         {
             var result = await _context.EmailSendTask
                 .AsNoTracking()
-                .Where(x => x.CreateDate > DateTime.SpecifyKind(leftDate.Date, DateTimeKind.Utc)
-                    && x.CreateDate < DateTime.SpecifyKind(rightDate.Date, DateTimeKind.Utc)
+                .Where(x => x.CreateDate >= DateTime.SpecifyKind(leftDate.Date, DateTimeKind.Utc)
+                    && x.CreateDate <= DateTime.SpecifyKind(rightDate.Date, DateTimeKind.Utc).AddDays(1)
                     && x.SendTaskStatus == status.ToString())
                 .OrderByDescending(x => x.CreateDate)
                 .ToListAsync();

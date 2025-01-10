@@ -87,6 +87,11 @@ namespace WebEmailSendler.Services
             }
             await _dataManager.CreateEmailSendResult(result);
         }
+        public EmailSendTask UpdateEmailSendTask(EmailSendTask emailSendTask)
+        {
+            _dataManager.UpdateEmailSendTask(emailSendTask);
+            return emailSendTask;
+        }
         public Part<EmailSendData> EmailResultPath(string? inputValue, int sendTaskId, int pageNumber, int pageSize, string? sortField, string? orderBy)
         {
             pageNumber += 1;

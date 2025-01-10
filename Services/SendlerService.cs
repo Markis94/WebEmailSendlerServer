@@ -180,7 +180,7 @@ namespace WebEmailSendler.Services
             _dataManager.UpdateEmailSendTask(sendTask);
             TokenHub.CancelTokenTasks.Remove(sendTask.Id);
             await _hub.SendChangeEmailSendStatus(sendTask);
-            Log.Information($"End Send - {DateTime.UtcNow} - {emailSendTask.Name}");
+            Log.Information($"End Send - {DateTime.UtcNow} - {sendTask?.Name}");
         }
 
         private async Task<Tuple<bool, string>> SendEmailAsync(string email, string subject, string? body)

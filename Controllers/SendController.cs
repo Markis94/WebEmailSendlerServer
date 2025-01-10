@@ -56,6 +56,13 @@ namespace WebEmailSendler.Controllers
             return id;
         }
 
+        [HttpPut("updateEmailDataSend")]
+        public EmailSendTask UpdateEmailDataSendTask([FromBody] EmailSendTask emailSendTask)
+        {
+            var result = _dataService.UpdateEmailSendTask(emailSendTask);
+            return result;
+        }
+
         [HttpPost("sendTestMessage")]
         public async Task<IActionResult> SendTestMessage(TestSend testSend)
         {
