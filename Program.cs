@@ -10,6 +10,7 @@ using WebEmailSendler;
 using WebEmailSendler.Context;
 using WebEmailSendler.Dependencies;
 using WebEmailSendler.Models;
+using WebEmailSendler.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,15 +19,6 @@ builder.Services.AddControllers().AddNewtonsoftJson(x =>
 {
     x.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
 });
-//// Add services to the container.
-//builder.Services.AddAuthentication(NegotiateDefaults.AuthenticationScheme)
-//   .AddNegotiate();
-
-//builder.Services.AddAuthorization(options =>
-//{
-//    // By default, all incoming requests will be authorized according to the default policy.
-//    options.FallbackPolicy = options.DefaultPolicy;
-//});
 
 #if !DEBUG
     builder.Configuration
@@ -35,9 +27,10 @@ builder.Services.AddControllers().AddNewtonsoftJson(x =>
         .Build();
 #endif
 
-string connection = builder.Configuration.GetConnectionString("Connection") ?? "";
+string connection = Environment.GetEnvironmentVariable("ConnectionString")
+    ?? builder.Configuration.GetConnectionString("Connection") 
+    ?? throw new Exception("Отсутствует строка подключения.");
 
-builder.Services.Configure<SmtpConfiguration>(builder.Configuration.GetSection("SmtpConfiguration"));
 builder.Services.AddDbContext<MyDbContext>(options => options.UseNpgsql(connection));
 
 builder.Services.AddHangfire(x => x.UsePostgreSqlStorage(c => c.UseNpgsqlConnection(connection),
@@ -72,7 +65,8 @@ builder.Services.AddSignalR()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-string[] cors = builder.Configuration?.GetSection("Cores").Get<string[]>() ?? [IPAddress.Loopback.ToString()];
+string[] cors = [Environment.GetEnvironmentVariable("ExternalUrl") ?? IPAddress.Loopback.ToString()];
+//?? builder.Configuration?.GetSection("Cores").Get<string[]>() ?? [IPAddress.Loopback.ToString()];
 
 // добавляем сервисы CORS
 builder.Services
@@ -119,6 +113,8 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<MyDbContext>();
     db.Database.Migrate();
+    var conf = scope.ServiceProvider.GetRequiredService<ConfigurationService>();
+    conf.Init();
 }
 
 

@@ -9,6 +9,6 @@ namespace WebEmailSendler.Context
         public DbSet<EmailSendTask> EmailSendTask { get; set; }
         public DbSet<EmailSendData> EmailSendData { get; set; }
         public DbSet<Sample> Samles {  get; set; }
-
+        public DbSet<AppConfiguration> AppConfigurations { get; set; }
     }
 }

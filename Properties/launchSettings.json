@@ -5,7 +5,9 @@
       "launchBrowser": true,
       "launchUrl": "task",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ExternalUrl": "http://localhost:4200",
+        "ConnectionString": "Host=192.168.1.201;Port=5432;Database=Sendler;Username=postgres;Password=a896ox;"
       },
       "dotnetRunMessages": true,
       "applicationUrl": "http://localhost:5145"
@@ -15,7 +17,9 @@
       "launchBrowser": true,
       "launchUrl": "task",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "ExternalUrl": "http://localhost:4200",
+        "ConnectionString": "Host=192.168.1.201;Port=5432;Database=Sendler;Username=postgres;Password=a896ox;"
       },
       "dotnetRunMessages": true,
       "applicationUrl": "https://localhost:7148;http://localhost:5145"

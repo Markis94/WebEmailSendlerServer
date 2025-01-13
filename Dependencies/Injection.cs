@@ -15,7 +15,8 @@ namespace WebEmailSendler.Dependencies
             services.AddScoped<DataService>();
             services.AddScoped<JobService>();
             services.AddScoped<SampleService>();
-            //services.AddSingleton<ConfigurationService>();
+            services.AddScoped<MyConfigurationManager>();
+            services.AddSingleton<ConfigurationService>();
 
             services.AddSingleton<SignalHub>();
         }

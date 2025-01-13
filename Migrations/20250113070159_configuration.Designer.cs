@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using WebEmailSendler.Context;
@@ -11,9 +12,11 @@ using WebEmailSendler.Context;
 namespace WebEmailSendler.Migrations
 {
     [DbContext(typeof(MyDbContext))]
-    partial class MyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250113070159_configuration")]
+    partial class configuration
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -24,14 +27,7 @@ namespace WebEmailSendler.Migrations
 
             modelBuilder.Entity("WebEmailSendler.Models.AppConfiguration", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
                     b.Property<string>("DisplayName")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<int>("EmailPackSize")
@@ -64,8 +60,6 @@ namespace WebEmailSendler.Migrations
 
                     b.Property<int>("ThreadSleep")
                         .HasColumnType("integer");
-
-                    b.HasKey("Id");
 
                     b.ToTable("AppConfigurations");
                 });

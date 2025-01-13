@@ -1,6 +1,7 @@
 ﻿
 using Microsoft.Extensions.Options;
 using Serilog;
+using System.Linq;
 using System.Net;
 using System.Net.Mail;
 using WebEmailSendler.Enums;
@@ -11,20 +12,17 @@ namespace WebEmailSendler.Services
 {
     public class SendlerService
     {
-        private readonly int TREAD_COUNT;
-        private readonly int PACK_SIZE;
         private readonly SignalHub _hub;
         private readonly FileService _fileService;
         private readonly DataManager _dataManager;
-        private readonly SmtpConfiguration _smtpConfiguration;
-
-        public SendlerService(FileService fileService, DataManager dataManager, IConfiguration configuration, IOptions<SmtpConfiguration> smtpConfiguration, SignalHub hub)
+        private readonly ConfigurationService _configurationService;
+        private readonly AppConfiguration _appConfiguration;
+        public SendlerService(FileService fileService, DataManager dataManager, ConfigurationService configurationService, SignalHub hub)
         {
             _fileService = fileService;
             _dataManager = dataManager;
-            _smtpConfiguration = smtpConfiguration.Value;
-            TREAD_COUNT = Convert.ToInt32(configuration.GetSection("TREAD_COUNT").Value);
-            PACK_SIZE = Convert.ToInt32(configuration.GetSection("PACK_SIZE").Value);
+            _configurationService = configurationService;
+            _appConfiguration = configurationService.GetConfiguration();
             _hub = hub;
         }
 
@@ -45,7 +43,7 @@ namespace WebEmailSendler.Services
             emailSendTask!.SendTaskStatus = SendTaskStatusEnum.started.ToString();
             _dataManager.UpdateEmailSendTask(emailSendTask);
             //делим рассылку на маленькие части.
-            var emailPacks = emailList.Chunk(PACK_SIZE);
+            var emailPacks = emailList.Chunk(_appConfiguration.EmailPackSize);
             //информация по количеству отправленых писем
             var emailinfo = await _dataManager.EmailSendTaskInfo(emailSendTask.Id);
             emailinfo.SendCount = emailList.Count;
@@ -54,7 +52,7 @@ namespace WebEmailSendler.Services
                 try
                 {
                     token.ThrowIfCancellationRequested();
-                    var result = await SendEmailParallel(emailSendTask, emailPack.ToList(), TREAD_COUNT, token);
+                    var result = await SendEmailParallel(emailSendTask, emailPack.ToList(), _appConfiguration.ThreadCount, token);
 
                     //считаем всякое разное и отправляем в хаб
                     emailinfo.CurrentSendCount += result.emailinfo.SuccessSendCount;
@@ -81,6 +79,7 @@ namespace WebEmailSendler.Services
                 }
             }
             await SendFinished(emailSendTask, emailList, SendTaskStatusEnum.complete);
+            Thread.Sleep(TimeSpan.FromMinutes(_appConfiguration.ThreadSleep));
         }
 
         private async Task SendInfoHubMessage(EmailSendTask emailSendTask, SendInfo emailSendInfo)
@@ -106,7 +105,7 @@ namespace WebEmailSendler.Services
             var emailinfo = new SendInfo();
             var options = new ParallelOptions()
             {
-                MaxDegreeOfParallelism = TREAD_COUNT,
+                MaxDegreeOfParallelism = _appConfiguration.ThreadCount,
                 CancellationToken = token
             };
 
@@ -187,17 +186,17 @@ namespace WebEmailSendler.Services
         {
             try
             {
-                var smtpClient = new SmtpClient(_smtpConfiguration.Server)
+                var smtpClient = new SmtpClient(_appConfiguration.Server)
                 {
-                    Port = _smtpConfiguration.Port,
-                    Credentials = new NetworkCredential(_smtpConfiguration.Login, _smtpConfiguration.Password),
+                    Port = _appConfiguration.Port,
+                    Credentials = new NetworkCredential(_appConfiguration.Login, _appConfiguration.Password),
                     EnableSsl = false,
                     Timeout = 120000 // Устанавливаем тайм-аут в 120 секунд (120000 миллисекунд)
                 };
 
                 var mailMessage = new MailMessage
                 {
-                    From = new MailAddress(_smtpConfiguration.HostEmailAddress, _smtpConfiguration.DisplayName),
+                    From = new MailAddress(_appConfiguration.HostEmailAddress, _appConfiguration.DisplayName),
                     Subject = subject,
                     Body = body ?? "",
                     IsBodyHtml = true,
