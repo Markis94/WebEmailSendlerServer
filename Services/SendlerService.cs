@@ -35,7 +35,7 @@ namespace WebEmailSendler.Services
 
         public async Task SendEmailByTask(int emailTaskId, CancellationToken token)
         {
-            var emailList = await _dataManager.GetEmailSendResult(emailTaskId);
+            var emailList = await _dataManager.GetEmailSendResult(emailTaskId, true);
             var emailSendTask = await _dataManager.GetEmailSendTask(emailTaskId);
             Log.Information($"Start Send - {DateTime.UtcNow} - {emailSendTask?.Name ?? "" }");
 

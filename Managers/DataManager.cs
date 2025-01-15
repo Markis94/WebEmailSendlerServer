@@ -107,7 +107,18 @@ namespace WebEmailSendler.Managers
 
         public async Task<List<EmailSendData>> GetEmailSendResult(int sendlerEmailTaskId)
         {
-            var result = await _context.EmailSendData.AsQueryable().AsNoTracking().Where(x => x.EmailSendTaskId == sendlerEmailTaskId && x.IsSuccess != true).ToListAsync();
+            var result = await _context.EmailSendData.AsQueryable().AsNoTracking().Where(x => x.EmailSendTaskId == sendlerEmailTaskId).ToListAsync();
+            return result;
+        }
+        /// <summary>
+        /// отдает список Email для отправки где статус != status
+        /// </summary>
+        /// <param name="sendlerEmailTaskId"></param>
+        /// <param name="status"></param>
+        /// <returns></returns>
+        public async Task<List<EmailSendData>> GetEmailSendResult(int sendlerEmailTaskId, bool status)
+        {
+            var result = await _context.EmailSendData.AsQueryable().AsNoTracking().Where(x => x.EmailSendTaskId == sendlerEmailTaskId && x.IsSuccess != status).ToListAsync();
             return result;
         }
 

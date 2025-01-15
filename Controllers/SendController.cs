@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using System.IO;
 using WebEmailSendler.Enums;
 using WebEmailSendler.Models;
 using WebEmailSendler.Services;
@@ -33,6 +34,13 @@ namespace WebEmailSendler.Controllers
         {
             var result = await _dataService.EmailSendTasksById(sendTaskId);
             return result;
+        }
+
+        [HttpGet("sendResultFile")]
+        public async Task<IActionResult> GetEmailResultFile(int sendTaskId)
+        {
+            var result = await _dataService.EmailSendResultCsv(sendTaskId);
+            return File(result.stream, "text/csv", result.fileName);
         }
 
         [HttpGet("sendResultPath")]

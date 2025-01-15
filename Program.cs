@@ -14,7 +14,6 @@ using WebEmailSendler.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-
 builder.Services.AddControllers().AddNewtonsoftJson(x =>
 {
     x.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
@@ -27,20 +26,30 @@ builder.Services.AddControllers().AddNewtonsoftJson(x =>
         .Build();
 #endif
 
-string connection = Environment.GetEnvironmentVariable("ConnectionString")
-    ?? builder.Configuration.GetConnectionString("Connection") 
-    ?? throw new Exception("Отсутствует строка подключения.");
-
-builder.Services.AddDbContext<MyDbContext>(options => options.UseNpgsql(connection));
-
-builder.Services.AddHangfire(x => x.UsePostgreSqlStorage(c => c.UseNpgsqlConnection(connection),
-    new PostgreSqlStorageOptions
+builder.Services.AddDbContext<MyDbContext>(
+    options =>
     {
-        InvisibilityTimeout = TimeSpan.FromHours(30), // Тайм-аут невидимости задач (увеличьте для длительных задач)
-        QueuePollInterval = TimeSpan.FromSeconds(15), // Интервал опроса очереди задач
-        DistributedLockTimeout = TimeSpan.FromMinutes(30), // Тайм-аут для распределённой блокировки
+        string connection = Environment.GetEnvironmentVariable("ConnectionString")
+        ?? builder.Configuration.GetConnectionString("Connection")
+        ?? throw new Exception("Отсутствует строка подключения.");
+        options.UseNpgsql(connection);
     }
-    )
+);
+
+builder.Services.AddHangfire(x =>
+    {
+        string connection = Environment.GetEnvironmentVariable("ConnectionString")
+                    ?? builder.Configuration.GetConnectionString("Connection")
+                    ?? throw new Exception("Отсутствует строка подключения.");
+        x.UsePostgreSqlStorage(c => c.UseNpgsqlConnection(connection),
+            new PostgreSqlStorageOptions
+            {
+                InvisibilityTimeout = TimeSpan.FromHours(30), // Тайм-аут невидимости задач (увеличьте для длительных задач)
+                QueuePollInterval = TimeSpan.FromSeconds(15), // Интервал опроса очереди задач
+                DistributedLockTimeout = TimeSpan.FromMinutes(30), // Тайм-аут для распределённой блокировки
+            }
+        );
+    }
 );
 
 builder.Services.AddHangfireServer((options) =>
@@ -99,7 +108,7 @@ CultureInfo russianCulture = new CultureInfo("ru-RU");
 Thread.CurrentThread.CurrentCulture = russianCulture;
 Thread.CurrentThread.CurrentUICulture = russianCulture;
 
-Log.Information($"Start App - {IPAddress.Loopback}");
+Log.Information($"Start App");
 Console.WriteLine(DateTimeOffset.Now.ToString("F"));
 
 var app = builder.Build();

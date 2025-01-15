@@ -1,13 +1,31 @@
-﻿using WebEmailSendler.Enums;
+﻿using System.Globalization;
+using WebEmailSendler.Enums;
 using WebEmailSendler.Managers;
 using WebEmailSendler.Models;
 
 namespace WebEmailSendler.Services
 {
+
     public class DataService(FileService fileService, DataManager dataManager)
     {
         private readonly FileService _fileService = fileService;
         private readonly DataManager _dataManager = dataManager;
+
+        public async Task<(MemoryStream stream, string fileName)> EmailSendResultCsv(int emailSendTaskId)
+        {
+            var emailTask = await _dataManager.GetEmailSendTask(emailSendTaskId);
+            var emailSendResult = await _dataManager.GetEmailSendResult(emailSendTaskId);
+            var fileName = $"Отчет {emailTask?.Name ?? DateTime.Now.ToString("dd.MM.yyyy")}.csv";
+            var res = emailSendResult.Select(x => new Reports
+            {
+                Email = x.Email,
+                Date = x.SendDate.ToString("dd.MM.yyyy HH:mm:ss"),
+                IsSuccess = x.IsSuccess ? "Успешно" : "Ошибка",
+                Error = x.ErrorMessage ?? "",
+            });
+            var stream = await _fileService.ExportCsv(res);
+            return ( stream , fileName);
+        }
 
         public async Task<SendInfo> EmailSendTaskInfo(int emailSendTaskId)
         {
