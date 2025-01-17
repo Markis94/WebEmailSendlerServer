@@ -16,6 +16,12 @@ namespace WebEmailSendler.Controllers
             return await _sampleService.CreateSample(sample);
         }
 
+        [HttpPost("createCopySample")]
+        public async Task<Sample> CreateCopySample(Sample sample)
+        {
+            return await _sampleService.CreateCopySample(sample);
+        }
+
         [HttpGet("samples")]
         public async Task<IList<Sample>> GetSamples()
         {

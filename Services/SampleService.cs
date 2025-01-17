@@ -14,6 +14,26 @@ namespace WebEmailSendler.Services
         {
             return await _dataManager.CreateSample(sample);
         }
+        public async Task<Sample> CreateCopySample(Sample sample)
+        {
+            var originSample = await _dataManager.SampleById(sample.Id);
+            if(originSample != null)
+            {
+                originSample.CreateDate = DateTimeOffset.UtcNow;
+                originSample.ChangeDate = DateTimeOffset.UtcNow;
+                originSample.Id = 0;
+                originSample.Name = originSample.Name + " - копия";
+                return await _dataManager.CreateSample(originSample);
+            }
+            else
+            {
+                sample.CreateDate = DateTimeOffset.UtcNow;
+                sample.ChangeDate = DateTimeOffset.UtcNow;
+                sample.Id = 0;
+                sample.Name = sample.Name + " - копия";
+                return await _dataManager.CreateSample(sample);
+            }
+        }
 
         public async Task<IList<Sample>> SampleList()
         {
