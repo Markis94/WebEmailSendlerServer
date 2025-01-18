@@ -19,7 +19,7 @@ builder.Services.AddControllers().AddNewtonsoftJson(x =>
     x.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
 });
 
-#if !DEBUG
+#if DEBUG
     builder.Configuration
         .SetBasePath($"{Directory.GetCurrentDirectory()}/Config")
         .AddJsonFile("configuration.json")
@@ -140,6 +140,7 @@ app.UseHangfireDashboard("/task", options);
 #if DEBUG
     app.UseCors("default");
 #endif
+
 app.UseHttpsRedirection();
 
 if (app.Environment.IsDevelopment())

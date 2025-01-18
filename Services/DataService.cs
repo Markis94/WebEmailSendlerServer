@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using WebEmailSendler.Enums;
 using WebEmailSendler.Managers;
 using WebEmailSendler.Models;
@@ -25,6 +26,16 @@ namespace WebEmailSendler.Services
             });
             var stream = await _fileService.ExportCsv(res);
             return ( stream , fileName);
+        }
+
+        public List<SearchEmailReport> SearchEmail(string email)
+        {
+            if (String.IsNullOrEmpty(email))
+            {
+                return [];
+            }
+            List<SearchEmailReport> results = _dataManager.SearchEmail(email);
+            return results;
         }
 
         public async Task<SendInfo> EmailSendTaskInfo(int emailSendTaskId)

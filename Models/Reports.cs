@@ -14,4 +14,13 @@
         public string Error { get; set; }
 
     }
+
+    public class SearchEmailReport
+    {
+        public string Email { get; set; }
+        public int Count { get; set; }
+        public int TaskSendId  { get; set; }
+        public string TaskSendName { get; set; }
+        public DateTimeOffset CreateDate { get; set; }
+    }
 }

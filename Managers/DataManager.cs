@@ -24,7 +24,7 @@ namespace WebEmailSendler.Managers
         public async Task<IList<Sample>> SampleList()
         {
             var result = await _context.Samles.AsNoTracking()
-                .Select(x=> new Sample() { Id =x.Id, ChangeDate= x.ChangeDate, CreateDate =x.CreateDate, Name = x.Name, HtmlString =x.HtmlString, JsonString = ""})
+                .Select(x => new Sample() { Id = x.Id, ChangeDate = x.ChangeDate, CreateDate = x.CreateDate, Name = x.Name, HtmlString = x.HtmlString, JsonString = "" })
                 .OrderByDescending(x => x.CreateDate)
                 .ToListAsync();
             return result;
@@ -52,7 +52,7 @@ namespace WebEmailSendler.Managers
 
         public async Task<Sample> SampleById(int sampleId)
         {
-            var result = await _context.Samles.FirstAsync(x=>x.Id == sampleId);
+            var result = await _context.Samles.FirstAsync(x => x.Id == sampleId);
             return result;
         }
 
@@ -165,6 +165,24 @@ namespace WebEmailSendler.Managers
                     _context.SaveChanges();
                 }
             }
+        }
+
+        public List<SearchEmailReport> SearchEmail(string email)
+        {
+            var result = _context.EmailSendData.AsNoTracking()
+                .Include(x=>x.EmailSendTask)
+                .Where(x => x.Email.Trim().ToLower() == email.Trim().ToLower())
+                .GroupBy(esd => new { esd.EmailSendTask.Name, esd.Email, esd.EmailSendTask.CreateDate, esd.EmailSendTaskId })
+                .Select(g => new SearchEmailReport
+                {
+                    TaskSendName = g.Key.Name,      // Имя рассылки
+                    CreateDate = g.Key.CreateDate,
+                    TaskSendId = g.Key.EmailSendTaskId,
+                    Email = g.Key.Email,              // Адрес email
+                    Count = g.Count()                 // Количество повторений
+                })
+                .ToList();
+            return result;
         }
 
         public Part<EmailSendData> EmailResultPath(string? inputValue, int sendTaskId, int pageNumber, int pageSize, string? sortField, string? orderBy)

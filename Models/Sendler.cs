@@ -45,7 +45,7 @@ namespace WebEmailSendler.Models
         public int Id { get; set; }
 
         [ForeignKey("EmailSendTaskId")]
-        public EmailSendTask? User { get; set; }
+        public EmailSendTask? EmailSendTask { get; set; }
 
         [Required(ErrorMessage = "Поле EmailSendTaskId не может быть пустым")]
         public int EmailSendTaskId { get; set; }

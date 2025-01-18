@@ -43,6 +43,13 @@ namespace WebEmailSendler.Controllers
             return File(result.stream, "text/csv", result.fileName);
         }
 
+        [HttpGet("searchResultByEmail")]
+        public IList<SearchEmailReport> SearchResultByEmail(string email)
+        {
+            var result = _dataService.SearchEmail(email);
+            return result;
+        }
+
         [HttpGet("sendResultPath")]
         public Part<EmailSendData> GetEmailResultPath(int sendTaskId, int pageNumber, int pageSize, string? sortField = null, string? orderBy = null, string? inputValue = null)
         {
