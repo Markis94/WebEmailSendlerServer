@@ -74,23 +74,24 @@ builder.Services.AddSignalR()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-#if !DEBUG
-    string[] cors = [Environment.GetEnvironmentVariable("ExternalUrl") ?? IPAddress.Loopback.ToString()];
-    //?? builder.Configuration?.GetSection("Cores").Get<string[]>() ?? [IPAddress.Loopback.ToString()];
+string[] cors = [Environment.GetEnvironmentVariable("ExternalUrl") ?? IPAddress.Loopback.ToString()];
+//?? builder.Configuration?.GetSection("Cores").Get<string[]>() ?? [IPAddress.Loopback.ToString()];
 
-    // добавляем сервисы CORS
-    builder.Services
-          .AddCors(options =>
-          {
-              options.AddPolicy("default",
-                  builder => builder
-                .WithOrigins(cors)
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials()
-               );
-          });
+#if DEBUG
+// добавляем сервисы CORS
+builder.Services
+      .AddCors(options =>
+      {
+          options.AddPolicy("default",
+              builder => builder
+            .WithOrigins(cors)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials()
+           );
+      });
 #endif
+
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.AspNetCore.Mvc", LogEventLevel.Error)
@@ -135,7 +136,8 @@ var options = new DashboardOptions()
 };
 
 app.UseHangfireDashboard("/task", options);
-#if !DEBUG
+
+#if DEBUG
     app.UseCors("default");
 #endif
 app.UseHttpsRedirection();
